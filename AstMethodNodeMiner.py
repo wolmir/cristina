@@ -11,5 +11,4 @@ class AstMethodNodeMiner(ast.NodeVisitor):
         return self.method_nodes
 
     def visit_FunctionDef(self, node):
-        if node.name != '__init__':
-            self.method_nodes.append(node)
+        self.method_nodes.append(node)

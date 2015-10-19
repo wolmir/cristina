@@ -18,6 +18,32 @@ class InstanceReferencesFinder(ast.NodeVisitor):
                 self.instance_references.add(node.attr)
 
 
+class InstanceVariablesFinder(ast.NodeVisitor):
+    def __init__(self):
+        ast.NodeVisitor.__init__(self)
+        self.instance_variables = set([])
+
+    def find_variables(self, class_node):
+        self.visit(class_node)
+        return self.instance_variables
+
+    def visit_Assign(self, node):
+        for target in node.targets:
+            self.visit(target)
+
+    def visit_Name(self, node):
+        print node.id
+        self.instance_variables.add(node.id)
+
+    def visit_Tuple(self, node):
+        for element in node.elts:
+            self.visit(element)
+
+    #Method nodes can't be visited.
+    def visit_FunctionDef(self, node):
+        return
+
+
 class AstClassWrapper:
     def __init__(self, class_node):
         self.class_node = class_node
@@ -27,6 +53,7 @@ class AstClassWrapper:
         for method_node in self.method_nodes:
             self.instance_references |= InstanceReferencesFinder().find_references(method_node)
         self.instance_variables = self.instance_references - self.method_names
+        self.instance_variables |= InstanceVariablesFinder().find_variables(class_node)
 
     def get_method_names(self):
         return self.method_names
@@ -39,3 +66,6 @@ class AstClassWrapper:
 
     def get_class_name(self):
         return self.class_node.name
+
+    def get_instance_variables(self):
+        return self.instance_variables
