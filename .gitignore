@@ -1,3 +1,4 @@
 *.pyc
 .idea/*
 tests.py
+pylint_output.txt
