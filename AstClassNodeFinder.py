@@ -1,7 +1,7 @@
 import ast
 
 
-class AstClassNodeMiner(ast.NodeVisitor):
+class AstClassNodeFinder(ast.NodeVisitor):
     def __init__(self):
         ast.NodeVisitor.__init__(self)
         self.class_nodes = set([])

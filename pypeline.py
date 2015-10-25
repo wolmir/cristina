@@ -36,12 +36,15 @@ class Pipe(object):
 
 class Filter(threading.Thread):
     """Define a Filter that can be coupled to a Pipeline."""
-    def __init__(self, filter_process):
+    def __init__(self):
         """Set up the Filter fields. Meant to be called first by subclasses."""
         threading.Thread.__init__(self)
-        self.filter_process = filter_process
         self.in_pipe = None
         self.out_pipe = None
+
+    def filter_process(self, data):
+        """Process the data."""
+        raise NotImplementedError
 
     def run(self):
         """
@@ -84,6 +87,9 @@ class DataSource(Filter):
     def next(self):
         """Not implemented and meant to be overridden."""
         raise NotImplementedError
+
+    def filter_process(self, data):
+        pass
 
 
 class Pipeline(object):

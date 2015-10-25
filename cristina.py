@@ -1,11 +1,20 @@
 """Define Cristina and execute it."""
 import argparse
-import pipeline
+import pypeline
 import os
+import ast
+from AstClassNodeFinder import AstClassNodeFinder
+from AstClassWrapper import AstClassWrapper
+from StructuralSimilarityBetweenMethods import \
+    StructuralSimilarityBetweenMethods
+from CallBasedDependenceBetweenMethods import \
+    CallBasedDependenceBetweenMethods
+from MethodMatrix import MethodMatrix
+from MethodChainFilter import MethodChainFilter
 
-class CristinaDataSourceSingleFile(pipeline.DataSource):
+class CrisDataSourceSingleFile(pypeline.DataSource):
     def __init__(self, file_path):
-        pipeline.DataSource.__init__(self)
+        pypeline.DataSource.__init__(self)
         self.data = []
         with open(file_path, 'r') as source_file:
             self.data.append(source_file.read())
@@ -17,9 +26,9 @@ class CristinaDataSourceSingleFile(pipeline.DataSource):
         return self.data.pop()
 
 
-class CristinaDataSourceDirectory(pipeline.DataSource):
+class CrisDataSourceDirectory(pypeline.DataSource):
     def __init__(self, path):
-        pipeline.DataSource.__init__(self)
+        pypeline.DataSource.__init__(self)
         self.file_paths = []
         for root, dirs, files in os.walk(path):
             for filename in files:
@@ -35,12 +44,103 @@ class CristinaDataSourceDirectory(pipeline.DataSource):
         return None
 
 
-class CristinaDataSourceFactory:
+class CrisDataSourceFactory(object):
     @staticmethod
     def create(path, recursive=False):
         if recursive:
-            return CristinaDataSourceDirectory(path)
-        return CristinaDataSourceSingleFile(path)
+            return CrisDataSourceDirectory(path)
+        return CrisDataSourceSingleFile(path)
+
+
+class CrisCodeToAstTransformer(pypeline.Filter):
+    def __init__(self):
+        pypeline.Filter.__init__(self)
+
+    @staticmethod
+    def code_to_ast(code):
+        return ast.parse(code)
+
+    def filter_process(self, data):
+        return CrisCodeToAstTransformer.code_to_ast(data)
+
+
+class CrisClassNodeFinder(pypeline.Filter):
+    def __init__(self):
+        pypeline.Filter.__init__(self)
+
+    @staticmethod
+    def find_class_nodes(ast_node):
+        class_node_finder = AstClassNodeFinder()
+        return class_node_finder.find_classes(ast_node)
+
+    def filter_process(self, data):
+        return CrisClassNodeFinder.find_class_nodes(data)
+
+
+class CrisAstClassWrapper(pypeline.Filter):
+    def __init__(self):
+        pypeline.Filter.__init__(self)
+
+    @staticmethod
+    def wrap_class_node(class_node):
+        return AstClassWrapper(class_node)
+
+    def filter_process(self, data):
+        return CrisAstClassWrapper.wrap_class_node(data)
+
+
+class CrisMethodByMethodMatrix(pypeline.Filter):
+    def __init__(self, weight_ssm, weight_cdm):
+        pypeline.Filter.__init__(self)
+        self.weights = []
+        self.weights.append(weight_cdm)
+        self.weights.append(weight_ssm)
+        self.metrics = []
+        self.metrics.append(StructuralSimilarityBetweenMethods())
+        self.metrics.append(CallBasedDependenceBetweenMethods())
+
+    def build_method_matrix(self, class_wrapper):
+        method_matrix_builder = MethodMatrix(class_wrapper)
+        return method_matrix_builder.build_matrix(self.metrics, self.weights)
+
+    def filter_process(self, data):
+        return self.build_method_matrix(data)
+
+
+class CrisChainsOfMethodsFilterFactory:
+    @staticmethod
+    def create(min_coupling):
+        if min_coupling:
+            return CrisCOMConstantThresholdFilter(min_coupling)
+        return CrisCOMVariableThresholdFilter()
+
+
+class CrisCOMConstantThresholdFilter(pypeline.Filter):
+    def __init__(self, min_coupling):
+        pypeline.Filter.__init__(self)
+        self.method_chain_filter = MethodChainFilter(min_coupling)
+
+    def filter_process(self, data):
+        return self.method_chain_filter.filter_matrix(data)
+
+
+class CrisCOMVariableThresholdFilter(pypeline.Filter):
+    def __init__(self):
+        pypeline.Filter.__init__(self)
+        self.method_chain_filter = MethodChainFilter(0.0)
+
+    def filter_process(self, data):
+        median = CrisCOMVariableThresholdFilter.calculate_median(
+            data.get_matrix())
+        self.method_chain_filter.set_min_coupling(median)
+        return self.method_chain_filter.filter_matrix(data)
+
+    @staticmethod
+    def calculate_median(matrix):
+        biggest_value = max([max(row) for row in matrix])
+        smallest_value = min([min(row) for row in matrix])
+        return (biggest_value + smallest_value) / 2.0
+
 
 class Cristina(object):
     """Parse arguments and create the pipeline."""
@@ -75,7 +175,7 @@ class Cristina(object):
 
     def create_pipeline(self):
         """Create the pipeline."""
-        pipeline = Pipeline()
+        pipeline = pypeline.Pipeline()
         python_code_data_source = CrisDataSourceFactory.create(self.args.path,
             self.args.recursive)
         pipeline.set_data_source(python_code_data_source)
@@ -83,11 +183,16 @@ class Cristina(object):
         pipeline.connect(code_to_ast_filter)
         class_finder_filter = CrisClassNodeFinder()
         pipeline.connect(class_finder_filter)
-        method_matrix_filter = CrisMethodByMethodMatrixBuilder(
+        class_wrapping_filter = CrisAstClassWrapper()
+        pipeline.connect(class_wrapping_filter)
+        method_matrix_filter = CrisMethodByMethodMatrix(
             self.args.weight_structural_similarity_between_methods,
             self.args.weight_call_based_dependence_between_methods)
         pipeline.connect(method_matrix_filter)
-        class_extractor_filter = CrisClassExtractor(self.args.min_coupling)
+        chains_of_methods_filter = CrisChainsOfMethodsFilterFactory.create(
+            self.args.min_coupling)
+        pipeline.connect(chains_of_methods_filter)
+        class_extractor_filter = CrisClassExtractor()
         pipeline.connect(class_extractor_filter)
         trivial_chains_merging_filter = CrisTrivialChainMerger(
             self.args.min_length)
