@@ -107,7 +107,7 @@ class CrisMethodByMethodMatrix(pypeline.Filter):
         return self.build_method_matrix(data)
 
 
-class CrisChainsOfMethodsFilterFactory:
+class CrisChainsOfMethodsFilterFactory(object):
     @staticmethod
     def create(min_coupling):
         if min_coupling:
@@ -121,7 +121,8 @@ class CrisCOMConstantThresholdFilter(pypeline.Filter):
         self.method_chain_filter = MethodChainFilter(min_coupling)
 
     def filter_process(self, data):
-        return self.method_chain_filter.filter_matrix(data)
+        data.set_matrix(self.method_chain_filter.filter_matrix(data))
+        return data
 
 
 class CrisCOMVariableThresholdFilter(pypeline.Filter):
@@ -133,7 +134,8 @@ class CrisCOMVariableThresholdFilter(pypeline.Filter):
         median = CrisCOMVariableThresholdFilter.calculate_median(
             data.get_matrix())
         self.method_chain_filter.set_min_coupling(median)
-        return self.method_chain_filter.filter_matrix(data)
+        data.set_matrix(self.method_chain_filter.filter_matrix(data))
+        return data
 
     @staticmethod
     def calculate_median(matrix):
@@ -141,6 +143,13 @@ class CrisCOMVariableThresholdFilter(pypeline.Filter):
         smallest_value = min([min(row) for row in matrix])
         return (biggest_value + smallest_value) / 2.0
 
+
+class CrisMethodChainsAssembler(pypeline.Filter):
+    def __init__(self):
+        pypeline.Filter.__init__(self)
+
+    def filter_process(self, data):
+        return MethodChainAssembler.assemble(data)
 
 class Cristina(object):
     """Parse arguments and create the pipeline."""
@@ -192,8 +201,8 @@ class Cristina(object):
         chains_of_methods_filter = CrisChainsOfMethodsFilterFactory.create(
             self.args.min_coupling)
         pipeline.connect(chains_of_methods_filter)
-        class_extractor_filter = CrisClassExtractor()
-        pipeline.connect(class_extractor_filter)
+        method_chains_assembler_filter = CrisMethodChainsAssembler()
+        pipeline.connect(method_chains_assembler_filter)
         trivial_chains_merging_filter = CrisTrivialChainMerger(
             self.args.min_length)
         pipeline.connect(trivial_chains_merging_filter)

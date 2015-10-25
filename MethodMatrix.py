@@ -28,3 +28,6 @@ class MethodMatrix:
 
     def get_matrix(self):
         return self.matrix
+
+    def set_matrix(self, matrix):
+        self.matrix = matrix
