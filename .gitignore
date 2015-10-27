@@ -1,4 +1,6 @@
 *.pyc
 .idea/*
+stuff_to_reuse/*
 tests.py
 pylint_output.txt
+ast_test_source.py

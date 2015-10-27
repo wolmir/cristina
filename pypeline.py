@@ -79,6 +79,7 @@ class DataSource(Filter):
         while self.has_next():
             data_packet = self.next()
             self.out_pipe.push(data_packet)
+        self.output_pipe.close_register()
 
     def has_next(self):
         """Not implemented and meant to be overridden."""
@@ -87,6 +88,24 @@ class DataSource(Filter):
     def next(self):
         """Not implemented and meant to be overridden."""
         raise NotImplementedError
+
+    def filter_process(self, data):
+        pass
+
+
+class DataSink(Filter):
+    """Handle the pipeline output."""
+    def __init__(self):
+        Filter.__init__(self)
+
+    def run(self):
+        while self.in_pipe.is_open() or self.in_pipe.has_flow():
+            try:
+                input_data_packet = self.in_pipe.pull()
+                self.handle_output(input_data_packet)
+            except Empty:
+                pass
+        self.close_sink()
 
     def filter_process(self, data):
         pass

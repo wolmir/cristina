@@ -11,6 +11,10 @@ from CallBasedDependenceBetweenMethods import \
     CallBasedDependenceBetweenMethods
 from MethodMatrix import MethodMatrix
 from MethodChainFilter import MethodChainFilter
+from MethodChainsAssembler import MethodChainsAssembler
+from TrivialChainMerger import TrivialChainMerger
+from ClassAssembler import ClassAssembler
+from AstToCodeTransformer import AstToCodeTransformer
 
 class CrisDataSourceSingleFile(pypeline.DataSource):
     def __init__(self, file_path):
@@ -90,18 +94,16 @@ class CrisAstClassWrapper(pypeline.Filter):
 
 
 class CrisMethodByMethodMatrix(pypeline.Filter):
-    def __init__(self, weight_ssm, weight_cdm):
+    def __init__(self, metrics, weight_ssm, weight_cdm):
         pypeline.Filter.__init__(self)
         self.weights = []
         self.weights.append(weight_cdm)
         self.weights.append(weight_ssm)
-        self.metrics = []
-        self.metrics.append(StructuralSimilarityBetweenMethods())
-        self.metrics.append(CallBasedDependenceBetweenMethods())
+        self.metrics = metrics
 
     def build_method_matrix(self, class_wrapper):
-        method_matrix_builder = MethodMatrix(class_wrapper)
-        return method_matrix_builder.build_matrix(self.metrics, self.weights)
+        method_matrix_builder = MethodMatrix(class_wrapper, self.metrics)
+        return method_matrix_builder.build_matrix(self.weights)
 
     def filter_process(self, data):
         return self.build_method_matrix(data)
@@ -149,7 +151,48 @@ class CrisMethodChainsAssembler(pypeline.Filter):
         pypeline.Filter.__init__(self)
 
     def filter_process(self, data):
-        return MethodChainAssembler.assemble(data)
+        return MethodChainsAssembler.assemble(data)
+
+
+class CrisTrivialChainMerger(pypeline.Filter):
+    def __init__(self, metrics, weight_ssm, weight_cdm, min_length):
+        pypeline.Filter.__init__(self)
+        self.weights = []
+        self.weights.append(weight_cdm)
+        self.weights.append(weight_ssm)
+        self.trivial_chain_merger = TrivialChainMerger(min_length, metrics,
+            self.weights)
+
+    def filter_process(self, data):
+        return self.trivial_chain_merger.merge_chains(data)
+
+
+class CrisClassAssembler(pypeline.Filter):
+    def __init__(self):
+        pypeline.Filter.__init__(self)
+
+    def filter_process(self, data):
+        return ClassAssembler.assemble_classes(data)
+
+class CrisAstToCodeTransformer(pypeline.Filter):
+    def __init__(self):
+        pypeline.Filter.__init__(self)
+
+    def filter_process(self, data):
+        return AstToCodeTransformer.transform(data)
+
+
+class CrisDataSink(pypeline.DataSink):
+    def __init__(self, output_path):
+        pypeline.DataSink.__init__(self)
+        self.output_file = open(output_path, 'w')
+
+    def handle_output(self, data):
+        self.output_file.write(data)
+
+    def close_sink(self):
+        self.output_file.close()
+
 
 class Cristina(object):
     """Parse arguments and create the pipeline."""
@@ -184,6 +227,8 @@ class Cristina(object):
 
     def create_pipeline(self):
         """Create the pipeline."""
+        metrics = [CallBasedDependenceBetweenMethods(),
+            StructuralSimilarityBetweenMethods()]
         pipeline = pypeline.Pipeline()
         python_code_data_source = CrisDataSourceFactory.create(self.args.path,
             self.args.recursive)
@@ -194,7 +239,7 @@ class Cristina(object):
         pipeline.connect(class_finder_filter)
         class_wrapping_filter = CrisAstClassWrapper()
         pipeline.connect(class_wrapping_filter)
-        method_matrix_filter = CrisMethodByMethodMatrix(
+        method_matrix_filter = CrisMethodByMethodMatrix(metrics,
             self.args.weight_structural_similarity_between_methods,
             self.args.weight_call_based_dependence_between_methods)
         pipeline.connect(method_matrix_filter)
@@ -203,9 +248,13 @@ class Cristina(object):
         pipeline.connect(chains_of_methods_filter)
         method_chains_assembler_filter = CrisMethodChainsAssembler()
         pipeline.connect(method_chains_assembler_filter)
-        trivial_chains_merging_filter = CrisTrivialChainMerger(
+        trivial_chains_merging_filter = CrisTrivialChainMerger(metrics,
+            self.args.weight_structural_similarity_between_methods,
+            self.args.weight_call_based_dependence_between_methods,
             self.args.min_length)
         pipeline.connect(trivial_chains_merging_filter)
+        class_assembler_filter = CrisClassAssembler()
+        pipeline.connect(class_assembler_filter)
         ast_to_code_filter = CrisAstToCodeTransformer()
         pipeline.connect(ast_to_code_filter)
         python_code_data_sink = CrisDataSink(self.args.output_path)
