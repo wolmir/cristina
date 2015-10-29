@@ -1,14 +1,13 @@
-import MethodMatrix
-
-class MatrixToGraphAdapter:
+class MatrixToGraphAdapter(object):
     def __init__(self, method_matrix):
         self.method_matrix = method_matrix.get_matrix()
 
     def get_nodes(self):
-        return range(len(self.method_matrix)
+        return range(len(self.method_matrix))
 
     def get_adjacent_nodes(self, node):
-        return [x in self.get_nodes() if self.method_matrix[node][x] > 0 and x != node]
+        return [x for x in self.get_nodes() 
+            if self.method_matrix[node][x] > 0 and x != node]
 
 class MatrixSplitter:
     def __init__(self, method_matrix):
@@ -16,17 +15,18 @@ class MatrixSplitter:
     
     def split_matrix(self):
         return GraphSplitter.split_graph(
-            MatrixToGraphAdapter(self.method_matrix))
+            MatrixToGraphAdapter(self.matrix))
 
 
-class GraphSplitter:
+class GraphSplitter(object):
     @staticmethod
     def split_graph(graph):
         subgraphs = []
         unlabelled_nodes = graph.get_nodes()
         while unlabelled_nodes:
             labelled_nodes = []
-            MatrixSplitter.flood_fill(graph, unlabelled_nodes[0], labelled_nodes, unlabelled_nodes, [])
+            GraphSplitter.flood_fill(graph, unlabelled_nodes[0], 
+                labelled_nodes, unlabelled_nodes, [])
             subgraphs.append(labelled_nodes)
         return subgraphs
 
@@ -35,7 +35,8 @@ class GraphSplitter:
         visited.append(node)
         for adjacent_node in graph.adjacent_nodes(node):
             if not adjacent_node in visited:
-                MatrixSplitter.flood_fill(adjacent_node, labelled, unlabelled, visited)
+                GraphSplitter.flood_fill(graph, adjacent_node, labelled,
+                    unlabelled, visited)
         unlabelled.remove(node)
         labelled.append(node)
 

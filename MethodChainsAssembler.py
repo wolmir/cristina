@@ -1,4 +1,3 @@
-import math
 from MatrixSplitter import MatrixSplitter
 
 class MethodChain(object):
@@ -22,7 +21,6 @@ class MethodChain(object):
 
     def merge(self, method_chain):
         self.method_ast_nodes += method_chain.method_ast_nodes
-
 
 
 class MethodChainsAssembler(object):
