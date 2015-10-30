@@ -5,7 +5,7 @@ import random
 
 from cristina_filters import CrisDataSourceSingleFile,\
     CrisDataSourceDirectory
-
+TEST_DATA_DIR = 'tests/test_data'
 
 @pytest.fixture
 def create_file():
@@ -38,11 +38,11 @@ class TestCrisDataSourceDirectory:
             "skfgg.pyc")
 
     def test_constructor(self):
-        cdsd = CrisDataSourceDirectory('test_data')
+        cdsd = CrisDataSourceDirectory(TEST_DATA_DIR)
         assert cdsd != None
     
     def test_load_files(self):
-        cdsd = CrisDataSourceDirectory('test_data')
-        file_paths = cdsd.load_files('test_data')
+        cdsd = CrisDataSourceDirectory(TEST_DATA_DIR)
+        file_paths = cdsd.load_files(TEST_DATA_DIR)
         assert file_paths != None
         assert len(file_paths) > 0

@@ -25,11 +25,19 @@ class CrisDataSourceSingleFile(pypeline.DataSource):
     def next(self):
         return self.data.pop()
 
+class InvalidPathException(Exception):
+    def __init__(self, value):
+        self.value = value
+
+    def __str__(self):
+        return repr(self.value)
 
 class CrisDataSourceDirectory(pypeline.DataSource):
     python_file_pattern = re.compile(r".+\.py$")
 
     def __init__(self, path):
+        if not os.path.exists(path):
+            raise InvalidPathException("The path doesn't exist.")
         pypeline.DataSource.__init__(self)
         self.file_paths = self.load_files(path)
 
