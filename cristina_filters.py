@@ -27,16 +27,20 @@ class CrisDataSourceSingleFile(pypeline.DataSource):
 
 
 class CrisDataSourceDirectory(pypeline.DataSource):
-    python_file_pattern = re.compile(r".+\.py")
+    python_file_pattern = re.compile(r".+\.py$")
 
     def __init__(self, path):
         pypeline.DataSource.__init__(self)
-        self.file_paths = []
+        self.file_paths = self.load_files(path)
+
+    def load_files(self, path):
+        file_paths = []
         for root, dirs, files in os.walk(path):
             for filename in files:
                 if CrisDataSourceDirectory.python_file_pattern.match(filename):
                     file_path = os.path.join(root, filename)
-                    self.file_paths.append(file_path)
+                    file_paths.append(file_path)
+        return file_paths
 
     def has_next(self):
         return len(self.file_paths) > 0

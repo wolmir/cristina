@@ -3,7 +3,8 @@ import tempfile
 import string
 import random
 
-from cristina_filters import CrisDataSourceSingleFile
+from cristina_filters import CrisDataSourceSingleFile,\
+    CrisDataSourceDirectory
 
 
 @pytest.fixture
@@ -31,4 +32,11 @@ class TestCrisDataSourceSingleFile:
 
 
 class TestCrisDataSourceDirectory:
-    pass
+    def test_regex_python_pattern(self):
+        assert CrisDataSourceDirectory.python_file_pattern.match("skfgg.py")
+        assert not CrisDataSourceDirectory.python_file_pattern.match(
+            "skfgg.pyc")
+
+    def test_constructor(self):
+        cdsd = CrisDataSourceDirectory('test_data')
+        assert cdsd != None
