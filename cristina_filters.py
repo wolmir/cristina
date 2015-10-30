@@ -2,6 +2,7 @@ import re
 import os
 import ast
 import pypeline
+import logging
 from AstClassNodeFinder import AstClassNodeFinder
 from AstClassWrapper import AstClassWrapper
 from MethodMatrix import MethodMatrix
@@ -73,7 +74,13 @@ class CrisCodeToAstTransformer(pypeline.Filter):
 
     @staticmethod
     def code_to_ast(code):
-        return ast.parse(code)
+        ast_node = None
+        try:
+            ast_node = ast.parse(code)
+        except SyntaxError:
+            logging.warning("CrisCodeToAstTransformer: SyntaxError while" +
+                " trying to parse the source_code. Ignoring the source.")
+        return ast_node
 
     def filter_process(self, data):
         return CrisCodeToAstTransformer.code_to_ast(data)
