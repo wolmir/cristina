@@ -40,3 +40,9 @@ class TestCrisDataSourceDirectory:
     def test_constructor(self):
         cdsd = CrisDataSourceDirectory('test_data')
         assert cdsd != None
+    
+    def test_load_files(self):
+        cdsd = CrisDataSourceDirectory('test_data')
+        file_paths = cdsd.load_files('test_data')
+        assert file_paths != None
+        assert len(file_paths) > 0
