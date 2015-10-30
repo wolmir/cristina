@@ -3,6 +3,7 @@ import tempfile
 import string
 import random
 import os
+import ast
 
 from cristina_filters import *
 
@@ -79,3 +80,15 @@ class TestCrisDataSourceDirectory:
         for python_file in list_of_python_files:
             next_file = cdsd.next()
         assert not cdsd.has_next()
+
+
+class TestCrisCodeToAstTransformer:
+    def test_code_to_ast(self, list_of_python_files):
+        cctat = CrisCodeToAstTransformer()
+        for python_file in list_of_python_files:
+            with open(os.path.join(TEST_DATA_DIR, python_file), 'r')\
+              as source_file:
+                source_code = source_file.read()
+                cctat_dump = ast.dump(cctat.code_to_ast(source_code))
+                ast_dump = ast.dump(ast.parse(source_code))
+                assert cctat_dump == ast_dump
