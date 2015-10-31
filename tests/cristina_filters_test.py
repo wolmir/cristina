@@ -4,6 +4,7 @@ import string
 import random
 import os
 import ast
+import re
 
 from cristina_filters import *
 
@@ -99,3 +100,35 @@ class TestCrisCodeToAstTransformer:
                 if cctat_ast:
                     cctat_dump = ast.dump(cctat_ast)
                 assert cctat_dump == ast_dump
+
+
+class TestCrisClassNodeFinder:
+    def count_class_word_occurrence(self, txt):
+        class_pattern = re.compile(r"\s*class\s+")
+
+
+    def test_find_class_nodes(self, list_of_python_files):
+        class ClassFinder(ast.NodeVisitor):
+            def __init__(self):
+                ast.NodeVisitor.__init__(self)
+                self.class_nodes = []
+
+            def visit_ClassDef(self, node):
+                self.class_nodes.append(node)
+                self.generic_visit(node)
+
+        for python_file in list_of_python_files:
+            source_code = ""
+            with open(os.path.join(TEST_DATA_DIR, python_file), 'r') as source:
+                source_code = source.read()
+            ast_node = None
+            try:
+                ast_node = ast.parse(source_code)
+            except SyntaxError:
+                continue
+            class_finder = ClassFinder()
+            class_finder.visit(ast_node)
+            #class_nodes = CrisClassNodeFinder.find_class_nodes(ast_node)
+            #class_dict = pyclbr.readmodule(python_file[:-3], path=[TEST_DATA_DIR])
+            assert len(CrisClassNodeFinder.find_class_nodes(ast_node)) == \
+                len(class_finder.class_nodes)
