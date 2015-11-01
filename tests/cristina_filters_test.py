@@ -4,9 +4,9 @@ import string
 import random
 import os
 import ast
-import re
 
 from cristina_filters import *
+from AstClassWrapper import *
 
 TEST_DATA_DIR = 'tests/test_data'
 
@@ -79,7 +79,7 @@ class TestCrisDataSourceDirectory:
         cdsd = CrisDataSourceDirectory(TEST_DATA_DIR)
         assert cdsd.has_next()
         for python_file in list_of_python_files:
-            next_file = cdsd.next()
+            cdsd.next()
         assert not cdsd.has_next()
 
 
@@ -102,17 +102,39 @@ class TestCrisCodeToAstTransformer:
                 assert cctat_dump == ast_dump
 
 
+class ClassFinder(ast.NodeVisitor):
+    def __init__(self):
+        ast.NodeVisitor.__init__(self)
+        self.class_nodes = []
+
+    def visit_ClassDef(self, node):
+        self.class_nodes.append(node)
+        self.generic_visit(node)
+
+@pytest.fixture(scope="module")
+def list_of_ast_module_nodes(list_of_python_files):
+    ast_module_nodes = []
+    for python_file in list_of_python_files:
+        with open(os.path.join(TEST_DATA_DIR, python_file), 'r') as source:
+            try:
+                ast_module_nodes.append((python_file, ast.parse(source.read())))
+            except SyntaxError:
+                continue
+    return ast_module_nodes
+
+
+@pytest.fixture(scope="module")
+def list_of_ast_class_nodes(list_of_ast_module_nodes):
+    ast_class_nodes = []
+    for python_file, node in list_of_ast_module_nodes:
+        class_finder = ClassFinder()
+        class_finder.visit(node)
+        ast_class_nodes.append((python_file, node, class_finder.class_nodes))
+    return ast_class_nodes
+
+
 class TestCrisClassNodeFinder:
     def test_find_class_nodes(self, list_of_python_files):
-        class ClassFinder(ast.NodeVisitor):
-            def __init__(self):
-                ast.NodeVisitor.__init__(self)
-                self.class_nodes = []
-
-            def visit_ClassDef(self, node):
-                self.class_nodes.append(node)
-                self.generic_visit(node)
-
         for python_file in list_of_python_files:
             source_code = ""
             with open(os.path.join(TEST_DATA_DIR, python_file), 'r') as source:
@@ -131,4 +153,18 @@ class TestCrisClassNodeFinder:
             for node_a in CrisClassNodeFinder.find_class_nodes(ast_node):
                 assert ast.dump(node_a) in [ast.dump(node_b)
                     for node_b in class_finder.class_nodes]
-    
+
+
+class TestAstClassWrapper:
+    def test_constructor(self, list_of_ast_class_nodes):
+        for python_file, node, class_nodes in list_of_ast_class_nodes:
+            for class_node in class_nodes:
+                class_wrapper = AstClassWrapper(class_node)
+                assert class_wrapper != None
+                assert len(class_wrapper.method_nodes) == \
+                    len(class_wrapper.method_names)
+
+    # def test_get_method_names(self, list_of_ast_class_nodes):
+    #     for class_node in list_of_ast_class_nodes:
+    #         class_wrapper = AstClassWrapper(class_node)
+    #         assert class_wrapper.get_method_names() != None

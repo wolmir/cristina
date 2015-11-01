@@ -49,12 +49,12 @@ class AstClassWrapper:
         self.class_node = class_node
         self.method_nodes = AstMethodNodeMiner.AstMethodNodeMiner().find_nodes(
             class_node)
-        self.method_names = set([method_node.name 
-            for method_node in self.method_nodes])
+        self.method_names = [method_node.name 
+            for method_node in self.method_nodes]
         self.instance_references = set([])
         for method_node in self.method_nodes:
             self.instance_references |= InstanceReferencesFinder().find_references(method_node)
-        self.instance_variables = self.instance_references - self.method_names
+        self.instance_variables = self.instance_references - set(self.method_names)
         self.instance_variables |= InstanceVariablesFinder().find_variables(class_node)
 
     def get_method_names(self):
