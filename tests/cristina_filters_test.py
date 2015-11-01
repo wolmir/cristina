@@ -103,10 +103,6 @@ class TestCrisCodeToAstTransformer:
 
 
 class TestCrisClassNodeFinder:
-    def count_class_word_occurrence(self, txt):
-        class_pattern = re.compile(r"\s*class\s+")
-
-
     def test_find_class_nodes(self, list_of_python_files):
         class ClassFinder(ast.NodeVisitor):
             def __init__(self):
@@ -132,3 +128,7 @@ class TestCrisClassNodeFinder:
             #class_dict = pyclbr.readmodule(python_file[:-3], path=[TEST_DATA_DIR])
             assert len(CrisClassNodeFinder.find_class_nodes(ast_node)) == \
                 len(class_finder.class_nodes)
+            for node_a in CrisClassNodeFinder.find_class_nodes(ast_node):
+                assert ast.dump(node_a) in [ast.dump(node_b)
+                    for node_b in class_finder.class_nodes]
+    
