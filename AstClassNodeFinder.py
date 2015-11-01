@@ -12,3 +12,4 @@ class AstClassNodeFinder(ast.NodeVisitor):
 
     def visit_ClassDef(self, node):
         self.class_nodes.add(node)
+        self.generic_visit(node)
