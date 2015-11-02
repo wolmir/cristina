@@ -53,7 +53,7 @@ class TestCrisDataSourceDirectory:
     def test_constructor(self):
         cdsd = CrisDataSourceDirectory(TEST_DATA_DIR)
         assert cdsd != None
-    
+
     def test_load_files(self, list_of_python_files):
         cdsd = CrisDataSourceDirectory(TEST_DATA_DIR)
         file_paths = cdsd.load_files(TEST_DATA_DIR)
@@ -106,9 +106,11 @@ class ClassFinder(ast.NodeVisitor):
     def __init__(self):
         ast.NodeVisitor.__init__(self)
         self.class_nodes = []
+        self.class_nodes_dict = {}
 
     def visit_ClassDef(self, node):
         self.class_nodes.append(node)
+        self.class_nodes_dict[node.name] = node
         self.generic_visit(node)
 
 @pytest.fixture(scope="module")
@@ -155,6 +157,18 @@ class TestCrisClassNodeFinder:
                     for node_b in class_finder.class_nodes]
 
 
+@pytest.fixture
+def custom_python_code(request):
+    custom_dir = os.path.join(TEST_DATA_DIR, 'custom_data')
+    fname = getattr(request.cls, "custom_code_fname",
+        "python_file_for_input.py")
+    fname = os.path.join(custom_dir, fname)
+    custom_code = ''
+    with open(fname, 'r') as src:
+        custom_code = src.read()
+    return custom_code
+
+
 class TestAstClassWrapper:
     def test_constructor(self, list_of_ast_class_nodes):
         for python_file, node, class_nodes in list_of_ast_class_nodes:
@@ -163,6 +177,24 @@ class TestAstClassWrapper:
                 assert class_wrapper != None
                 assert len(class_wrapper.method_nodes) == \
                     len(class_wrapper.method_names)
+
+    def test_get_instance_variables(self, custom_python_code):
+        custom_fields_by_class_name = \
+        {
+            'SomeClass': ['some_var', 'var1', 'var2', 'yet_another_var', 'var3']
+        }
+        ast_node = ast.parse(custom_python_code)
+        class_finder = ClassFinder()
+        class_finder.visit(ast_node)
+        class_nodes = class_finder.class_nodes_dict
+        for class_name in class_nodes.keys():
+            class_node = class_nodes[class_name]
+            class_fields = custom_fields_by_class_name[class_name]
+            ast_wrapper = AstClassWrapper(class_node)
+            ast_wrapper_instance_vars = ast_wrapper.get_instance_variables()
+            assert len(ast_wrapper_instance_vars) > 0
+            assert len(class_fields) == len(ast_wrapper_instance_vars)
+            assert len(ast_wrapper_instance_vars - set(class_fields)) == 0
 
     # def test_get_method_names(self, list_of_ast_class_nodes):
     #     for class_node in list_of_ast_class_nodes:
