@@ -7,6 +7,8 @@ import ast
 
 from cristina_filters import *
 from AstClassWrapper import *
+from StructuralSimilarityBetweenMethods import *
+from CallBasedDependenceBetweenMethods import *
 
 TEST_DATA_DIR = 'tests/test_data'
 
@@ -196,7 +198,31 @@ class TestAstClassWrapper:
             assert len(class_fields) == len(ast_wrapper_instance_vars)
             assert len(ast_wrapper_instance_vars - set(class_fields)) == 0
 
-    # def test_get_method_names(self, list_of_ast_class_nodes):
-    #     for class_node in list_of_ast_class_nodes:
-    #         class_wrapper = AstClassWrapper(class_node)
-    #         assert class_wrapper.get_method_names() != None
+class TestCrisMethodByMethodMatrix:
+    custom_code_fname = "method_matrix_input.py"
+
+    def test_for_crashes(self, list_of_ast_class_nodes):
+        for python_file, node, class_nodes in list_of_ast_class_nodes:
+            for class_node in class_nodes:
+                ast_wrapper = AstClassWrapper(class_node)
+                metrics = [StructuralSimilarityBetweenMethods(),
+                    CallBasedDependenceBetweenMethods()]
+                weight_ssm = 0.5
+                weight_cdm = 0.5
+                cmmm = CrisMethodByMethodMatrix(metrics, weight_ssm,
+                    weight_cdm)
+                cmmm.build_method_matrix(ast_wrapper)
+
+    # def test_build_method_matrix(self, custom_python_code):
+    #     ast_node = ast.parse(custom_python_code)
+    #     class_finder = ClassFinder()
+    #     class_finder.visit(ast_node)
+    #     metrics = [StructuralSimilarityBetweenMethods(),
+    #         CallBasedDependenceBetweenMethods()]
+    #     weight_ssm = 0.5
+    #     weight_cdm = 0.5
+    #     class_nodes = class_finder.class_nodes_dict
+    #     cmmm = CrisMethodByMethodMatrix(metrics, weight_ssm, weight_cdm)
+    #     for class_name in class_nodes.keys():
+    #         class_node = class_nodes[class_name]
+    #         ast_wrapper = AstClassWrapper(class_node)
