@@ -56,8 +56,9 @@ class Filter(threading.Thread):
         while self.in_pipe.is_open() or self.in_pipe.has_flow():
             try:
                 input_data_packet = self.in_pipe.pull()
-                output_data_packet = self.filter_process(input_data_packet)
-                self.out_pipe.push(output_data_packet)
+                if input_data_packet != None:
+                    output_data_packet = self.filter_process(input_data_packet)
+                    self.out_pipe.push(output_data_packet)
             except Empty:
                 pass
         self.out_pipe.close_register()
@@ -104,7 +105,8 @@ class DataSink(Filter):
             #pdb.set_trace()
             try:
                 input_data_packet = self.in_pipe.pull()
-                self.handle_output(input_data_packet)
+                if input_data_packet != None:
+                    self.handle_output(input_data_packet)
             except Empty:
                 pass
         self.close_sink()

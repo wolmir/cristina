@@ -8,6 +8,7 @@ import os
 
 TEST_DATA_DIR = 'tests/test_data'
 TEST_TMP_DIR = ''
+MAX_NO_OF_FILES = 300
 
 class ClassFinder(ast.NodeVisitor):
     def __init__(self):
@@ -46,7 +47,7 @@ def list_of_python_files(tmpdir):
     python_files = ''
     with open(os.path.join(TEST_DATA_DIR, 'python_files'), 'r') as ls_file:
         python_files = ls_file.read().split('\n')[:-1]
-    python_files = random.sample(python_files, 20)
+    python_files = random.sample(python_files, MAX_NO_OF_FILES)
     for python_file in python_files:
         shutil.copy(os.path.join(TEST_DATA_DIR, python_file), TEST_TMP_DIR)
     python_files = [os.path.join(TEST_TMP_DIR, src) for src in python_files]

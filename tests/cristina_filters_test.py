@@ -3,7 +3,7 @@ import os
 import ast
 import logging
 
-from conftest import ClassFinder
+from conftest import *
 from cristina_filters import *
 from AstClassWrapper import *
 from StructuralSimilarityBetweenMethods import *
@@ -12,8 +12,8 @@ from CallBasedDependenceBetweenMethods import *
 
 logging.basicConfig(filename='pytest.log', level=logging.DEBUG)
 
-TEST_DATA_DIR = 'tests/test_data'
-TEST_TMP_DIR = ''
+# TEST_DATA_DIR = 'tests/test_data'
+# TEST_TMP_DIR = ''
 
 
 class TestCrisDataSourceSingleFile:
@@ -43,23 +43,23 @@ class TestCrisDataSourceDirectory:
         assert cdsd != None
 
     def test_load_files(self, list_of_python_files):
-        TEST_TMP_DIR = os.path.dirname(list_of_python_files[0])
-        cdsd = CrisDataSourceDirectory(TEST_TMP_DIR)
-        file_paths = cdsd.load_files(TEST_TMP_DIR)
+        tmp_dir = os.path.dirname(list_of_python_files[0])
+        cdsd = CrisDataSourceDirectory(tmp_dir)
+        file_paths = cdsd.load_files(tmp_dir)
         assert file_paths != None
         assert len(file_paths) > 0
         for python_file in list_of_python_files:
             assert python_file in file_paths
 
     def test_post_constructor(self, list_of_python_files):
-        TEST_TMP_DIR = os.path.dirname(list_of_python_files[0])
-        cdsd = CrisDataSourceDirectory(TEST_TMP_DIR)
+        tmp_dir = os.path.dirname(list_of_python_files[0])
+        cdsd = CrisDataSourceDirectory(tmp_dir)
         assert cdsd.file_paths != None
         assert len(cdsd.file_paths) > 0
 
     def test_next(self, list_of_python_files):
-        TEST_TMP_DIR = os.path.dirname(list_of_python_files[0])
-        cdsd = CrisDataSourceDirectory(TEST_TMP_DIR)
+        tmp_dir = os.path.dirname(list_of_python_files[0])
+        cdsd = CrisDataSourceDirectory(tmp_dir)
         for python_file in list_of_python_files:
             next_file = cdsd.next()
             assert next_file != None
@@ -67,8 +67,8 @@ class TestCrisDataSourceDirectory:
             cdsd.next()
 
     def test_has_next(self, list_of_python_files):
-        TEST_TMP_DIR = os.path.dirname(list_of_python_files[0])
-        cdsd = CrisDataSourceDirectory(TEST_TMP_DIR)
+        tmp_dir = os.path.dirname(list_of_python_files[0])
+        cdsd = CrisDataSourceDirectory(tmp_dir)
         assert cdsd.has_next()
         for python_file in list_of_python_files:
             cdsd.next()
@@ -169,7 +169,7 @@ class TestCrisMethodByMethodMatrix:
         mod = imp.load_source("method_matrix_input", fname)
         return mod.get_method_matrix
 
-    #@pytest.mark.skipif(True, reason='Takes too long.')
+    @pytest.mark.skipif(MAX_NO_OF_FILES >= 50, reason='Takes too long.')
     def test_for_crashes(self, list_of_ast_class_nodes):
         counter = 0
         for python_file, node, class_nodes in list_of_ast_class_nodes:
@@ -204,3 +204,16 @@ class TestCrisMethodByMethodMatrix:
             no_of_nodes = len(method_matrix.method_nodes)
             mm_weights = method_matrix.weights
             assert matrix == custom_matrix
+
+
+class TestCrisCOMConstantThresholdFilter:
+    #@pytest.mark.skipif(MAX_NO_OF_FILES >= 50, reason='Takes too long.')
+    def test_for_crashes(self, list_of_ast_class_nodes):
+        for python_file, node, class_nodes in list_of_ast_class_nodes:
+            for class_node in class_nodes:
+                ccctf = CrisCOMConstantThresholdFilter(class_node)
+                assert ccctf != None
+
+    @pytest.mark.skipif(True, reason="Not implemented yet.")
+    def test_filter_process(self, list_of_ast_class_nodes):
+        pass
