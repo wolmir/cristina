@@ -42,7 +42,11 @@ def create_file():
 
 #This should ammend the problem.
 @pytest.fixture
-def list_of_python_files(tmpdir):
+def list_of_python_files(request, tmpdir):
+    def clean_up():
+        print "Deleting temporary files."
+        shutil.rmtree(str(tmpdir))
+    request.addfinalizer(clean_up)
     TEST_TMP_DIR = str(tmpdir)
     python_files = ''
     with open(os.path.join(TEST_DATA_DIR, 'python_files'), 'r') as ls_file:
