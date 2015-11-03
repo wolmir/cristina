@@ -79,7 +79,7 @@ class DataSource(Filter):
         while self.has_next():
             data_packet = self.next()
             self.out_pipe.push(data_packet)
-        self.output_pipe.close_register()
+        self.out_pipe.close_register()
 
     def has_next(self):
         """Not implemented and meant to be overridden."""
@@ -109,6 +109,14 @@ class DataSink(Filter):
 
     def filter_process(self, data):
         pass
+
+    def close_sink(self):
+        """Meant to be called when the pipeline is closed."""
+        raise NotImplementedError
+
+    def handle_output(self, output):
+        """Handle output."""
+        raise NotImplementedError
 
 
 class Pipeline(object):

@@ -1,36 +1,19 @@
 import pytest
-import tempfile
-import string
-import random
 import os
 import ast
-import re
-import sys
+import logging
 
+from conftest import ClassFinder
 from cristina_filters import *
 from AstClassWrapper import *
 from StructuralSimilarityBetweenMethods import *
 from CallBasedDependenceBetweenMethods import *
 
+
+logging.basicConfig(filename='pytest.log', level=logging.DEBUG)
+
 TEST_DATA_DIR = 'tests/test_data'
-
-@pytest.fixture
-def create_file():
-    tmp_file = tempfile.NamedTemporaryFile(delete=False)
-    file_size = random.randint(100, 1000)
-    stuff_to_write = ''.join([random.choice(string.printable)
-        for i in range(file_size)])
-    tmp_file.write(stuff_to_write)
-    tmp_file.close()
-    return tmp_file
-
-
-@pytest.fixture(scope="module")
-def list_of_python_files():
-    python_files = ''
-    with open(os.path.join(TEST_DATA_DIR, 'python_files'), 'r') as ls_file:
-        python_files = ls_file.read()
-    return python_files.split('\n')[:-1]
+TEST_TMP_DIR = ''
 
 
 class TestCrisDataSourceSingleFile:
@@ -54,25 +37,29 @@ class TestCrisDataSourceDirectory:
         assert not CrisDataSourceDirectory.python_file_pattern.match(
             "skfgg.pyc")
 
-    def test_constructor(self):
-        cdsd = CrisDataSourceDirectory(TEST_DATA_DIR)
+    def test_constructor(self, list_of_python_files):
+        tmp_dir = os.path.dirname(list_of_python_files[0])
+        cdsd = CrisDataSourceDirectory(tmp_dir)
         assert cdsd != None
 
     def test_load_files(self, list_of_python_files):
-        cdsd = CrisDataSourceDirectory(TEST_DATA_DIR)
-        file_paths = cdsd.load_files(TEST_DATA_DIR)
+        TEST_TMP_DIR = os.path.dirname(list_of_python_files[0])
+        cdsd = CrisDataSourceDirectory(TEST_TMP_DIR)
+        file_paths = cdsd.load_files(TEST_TMP_DIR)
         assert file_paths != None
         assert len(file_paths) > 0
         for python_file in list_of_python_files:
-            assert os.path.join(TEST_DATA_DIR, python_file) in file_paths
+            assert python_file in file_paths
 
-    def test_post_constructor(self):
-        cdsd = CrisDataSourceDirectory(TEST_DATA_DIR)
+    def test_post_constructor(self, list_of_python_files):
+        TEST_TMP_DIR = os.path.dirname(list_of_python_files[0])
+        cdsd = CrisDataSourceDirectory(TEST_TMP_DIR)
         assert cdsd.file_paths != None
         assert len(cdsd.file_paths) > 0
 
     def test_next(self, list_of_python_files):
-        cdsd = CrisDataSourceDirectory(TEST_DATA_DIR)
+        TEST_TMP_DIR = os.path.dirname(list_of_python_files[0])
+        cdsd = CrisDataSourceDirectory(TEST_TMP_DIR)
         for python_file in list_of_python_files:
             next_file = cdsd.next()
             assert next_file != None
@@ -80,7 +67,8 @@ class TestCrisDataSourceDirectory:
             cdsd.next()
 
     def test_has_next(self, list_of_python_files):
-        cdsd = CrisDataSourceDirectory(TEST_DATA_DIR)
+        TEST_TMP_DIR = os.path.dirname(list_of_python_files[0])
+        cdsd = CrisDataSourceDirectory(TEST_TMP_DIR)
         assert cdsd.has_next()
         for python_file in list_of_python_files:
             cdsd.next()
@@ -91,8 +79,7 @@ class TestCrisCodeToAstTransformer:
     def test_code_to_ast(self, list_of_python_files):
         cctat = CrisCodeToAstTransformer()
         for python_file in list_of_python_files:
-            with open(os.path.join(TEST_DATA_DIR, python_file), 'r')\
-              as source_file:
+            with open(python_file, 'r') as source_file:
                 source_code = source_file.read()
                 ast_dump = None
                 try:
@@ -106,44 +93,11 @@ class TestCrisCodeToAstTransformer:
                 assert cctat_dump == ast_dump
 
 
-class ClassFinder(ast.NodeVisitor):
-    def __init__(self):
-        ast.NodeVisitor.__init__(self)
-        self.class_nodes = []
-        self.class_nodes_dict = {}
-
-    def visit_ClassDef(self, node):
-        self.class_nodes.append(node)
-        self.class_nodes_dict[node.name] = node
-        self.generic_visit(node)
-
-@pytest.fixture(scope="module")
-def list_of_ast_module_nodes(list_of_python_files):
-    ast_module_nodes = []
-    for python_file in list_of_python_files:
-        with open(os.path.join(TEST_DATA_DIR, python_file), 'r') as source:
-            try:
-                ast_module_nodes.append((python_file, ast.parse(source.read())))
-            except SyntaxError:
-                continue
-    return ast_module_nodes
-
-
-@pytest.fixture(scope="module")
-def list_of_ast_class_nodes(list_of_ast_module_nodes):
-    ast_class_nodes = []
-    for python_file, node in list_of_ast_module_nodes:
-        class_finder = ClassFinder()
-        class_finder.visit(node)
-        ast_class_nodes.append((python_file, node, class_finder.class_nodes))
-    return ast_class_nodes
-
-
 class TestCrisClassNodeFinder:
     def test_find_class_nodes(self, list_of_python_files):
         for python_file in list_of_python_files:
             source_code = ""
-            with open(os.path.join(TEST_DATA_DIR, python_file), 'r') as source:
+            with open(python_file, 'r') as source:
                 source_code = source.read()
             ast_node = None
             try:
@@ -159,18 +113,6 @@ class TestCrisClassNodeFinder:
             for node_a in CrisClassNodeFinder.find_class_nodes(ast_node):
                 assert ast.dump(node_a) in [ast.dump(node_b)
                     for node_b in class_finder.class_nodes]
-
-
-@pytest.fixture
-def custom_python_code(request):
-    custom_dir = os.path.join(TEST_DATA_DIR, 'custom_data')
-    fname = getattr(request.cls, "custom_code_fname",
-        "python_file_for_input.py")
-    fname = os.path.join(custom_dir, fname)
-    custom_code = ''
-    with open(fname, 'r') as src:
-        custom_code = src.read()
-    return custom_code
 
 
 class TestAstClassWrapper:
@@ -227,7 +169,7 @@ class TestCrisMethodByMethodMatrix:
         mod = imp.load_source("method_matrix_input", fname)
         return mod.get_method_matrix
 
-    @pytest.mark.skipif(True, reason='Takes too long.')
+    #@pytest.mark.skipif(True, reason='Takes too long.')
     def test_for_crashes(self, list_of_ast_class_nodes):
         counter = 0
         for python_file, node, class_nodes in list_of_ast_class_nodes:

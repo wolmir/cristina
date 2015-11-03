@@ -1,6 +1,3 @@
-import pdb
-
-
 class MethodMatrix:
     def __init__(self, metrics, weights):
         self.matrix = []

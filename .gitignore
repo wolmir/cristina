@@ -5,3 +5,4 @@ tests.py
 pylint_output.txt
 ast_test_source.py
 .cache/*
+pytest.log
