@@ -11,4 +11,4 @@ __init__ method as well.
 4. (fixed) ClassNodeFinder is ignoring inner classes.
 5. (fixed) AstClassWrapper is ignoring methods with the same name.
 6. (fixed) MethodMatrix has no set_metrics.
-7. Pipeline.set_data_source() is raising IndexError.
+7. (fixed) Pipeline.set_data_source() is raising IndexError.

@@ -1,5 +1,6 @@
 """Define a pipeline subsystem as per the Pipes and Filters pattern."""
 import threading
+import pdb
 from Queue import Queue, Empty
 
 class Pipe(object):
@@ -100,6 +101,7 @@ class DataSink(Filter):
 
     def run(self):
         while self.in_pipe.is_open() or self.in_pipe.has_flow():
+            #pdb.set_trace()
             try:
                 input_data_packet = self.in_pipe.pull()
                 self.handle_output(input_data_packet)
@@ -123,10 +125,18 @@ class Pipeline(object):
     """Define the structure of a multi-threaded processing pipeline."""
     def __init__(self):
         self.filters = []
+        self.data_source = None
+        self.data_sink = None
 
     def connect(self, filter_component):
         """Connect a filter to end of the pipeline."""
-        self.__connect(self.filters[-1], filter_component)
+        if len(self.filters) > 0:
+            self.__connect(self.filters[-1], filter_component)
+        elif self.data_source:
+            self.__connect(self.data_source, filter_component)
+        if self.data_sink:
+            self.__connect(filter_component, self.data_sink)
+        self.filters.append(filter_component)
 
     @staticmethod
     def __connect(input_filter, output_filter):
@@ -134,20 +144,31 @@ class Pipeline(object):
         pipe = Pipe()
         input_filter.set_output_pipe(pipe)
         output_filter.set_input_pipe(pipe)
+        pipe.open_register()
 
     def set_data_source(self, data_source):
         """Set the data source for the pipeline."""
-        self.filters = [data_source] + self.filters
-        self.__connect(self.filters[0], self.filters[1])
+        self.data_source = data_source
+        if len(self.filters) > 0:
+            self.__connect(self.data_source, self.filters[0])
 
     def set_data_sink(self, data_sink):
         """Set the data sink for the pipeline."""
-        self.filters.append(data_sink)
-        self.__connect(self.filters[-2], self.filters[-1])
+        self.data_sink = data_sink
+        if len(self.filters) > 0:
+            self.__connect(self.filters[-1], self.data_sink)
 
     def run(self):
         """Execute each filter and wait for them to finish."""
+        if self.data_source:
+            self.data_source.start()
         for filter_component in self.filters:
-            filter_component.run()
+            filter_component.start()
+        if self.data_sink:
+            self.data_sink.start()
         for filter_component in self.filters:
             filter_component.join()
+        if self.data_source:
+            self.data_source.join()
+        if self.data_sink:
+            self.data_sink.join()
