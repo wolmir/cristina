@@ -41,8 +41,10 @@ class Cristina(object):
 
     def create_pipeline(self):
         """Create the pipeline."""
-        metrics = [CallBasedDependenceBetweenMethods(),
-            StructuralSimilarityBetweenMethods()]
+        weight_cdm = self.args.weight_call_based_dependence_between_methods
+        weight_ssm = self.args.weight_structural_similarity_between_methods
+        metrics = [(CallBasedDependenceBetweenMethods(), weight_cdm),
+            (StructuralSimilarityBetweenMethods(), weight_ssm)]
         pipeline = pypeline.Pipeline()
         python_code_data_source = CrisDataSourceFactory.create(self.args.path,
             self.args.recursive)
@@ -53,9 +55,7 @@ class Cristina(object):
         pipeline.connect(class_finder_filter)
         class_wrapping_filter = CrisAstClassWrapper()
         pipeline.connect(class_wrapping_filter)
-        method_matrix_filter = CrisMethodByMethodMatrix(metrics,
-            self.args.weight_structural_similarity_between_methods,
-            self.args.weight_call_based_dependence_between_methods)
+        method_matrix_filter = CrisMethodByMethodMatrix(metrics)
         pipeline.connect(method_matrix_filter)
         chains_of_methods_filter = CrisChainsOfMethodsFilterFactory.create(
             self.args.min_coupling)
@@ -63,8 +63,6 @@ class Cristina(object):
         method_chains_assembler_filter = CrisMethodChainsAssembler()
         pipeline.connect(method_chains_assembler_filter)
         trivial_chains_merging_filter = CrisTrivialChainMerger(metrics,
-            self.args.weight_structural_similarity_between_methods,
-            self.args.weight_call_based_dependence_between_methods,
             self.args.min_length)
         pipeline.connect(trivial_chains_merging_filter)
         class_assembler_filter = CrisClassAssembler()

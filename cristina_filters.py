@@ -112,16 +112,14 @@ class CrisAstClassWrapper(pypeline.Filter):
 
 
 class CrisMethodByMethodMatrix(pypeline.Filter):
-    def __init__(self, metrics, weight_ssm, weight_cdm):
+    def __init__(self, metrics_with_weights):
         pypeline.Filter.__init__(self)
-        self.weights = []
-        self.weights.append(weight_cdm)
-        self.weights.append(weight_ssm)
-        self.metrics = metrics
+        self.weights = [item[1] for item in metrics_with_weights]
+        self.metrics = [item[0] for item in metrics_with_weights]
+        self.method_matrix_builder = MethodMatrix(self.metrics, self.weights)
 
     def build_method_matrix(self, class_wrapper):
-        method_matrix_builder = MethodMatrix(class_wrapper, self.metrics)
-        return method_matrix_builder.build_matrix(self.weights)
+        return self.method_matrix_builder.build_matrix(class_wrapper)
 
     def filter_process(self, data):
         return self.build_method_matrix(data)
