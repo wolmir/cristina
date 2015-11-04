@@ -13,4 +13,4 @@ __init__ method as well.
 6. (fixed) MethodMatrix has no set_metrics.
 7. (fixed) Pipeline.set_data_source() is raising IndexError.
 8. (fixed) The temp files used for testing are not being deleted.
-9. CrisComVariableThresholdFilter is not ignoring empty matrices.
+9. (fixed) CrisComVariableThresholdFilter is not ignoring empty matrices.

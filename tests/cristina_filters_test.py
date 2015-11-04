@@ -239,12 +239,14 @@ class TestCrisCOMConstantThresholdFilter:
 class TestCrisCOMVariableThresholdFilter:
 
     def has_value_less_than(self, matrix, value):
+        if value < 0:
+            return False
         for row in matrix:
             if len(filter(lambda x: x <= value and x > 0, row)) > 0:
                 return True
         return False
 
-    #@pytest.mark.skipif(MAX_NO_OF_FILES >= 50, reason='Takes too long.')
+    @pytest.mark.skipif(MAX_NO_OF_FILES >= 50, reason='Takes too long.')
     def test_filter_process(self, list_of_ast_class_nodes):
         weight_ssm = 0.7
         weight_cdm = 0.3
@@ -258,8 +260,10 @@ class TestCrisCOMVariableThresholdFilter:
                 wrapper = AstClassWrapper(class_node)
                 matrix = cmmm.build_method_matrix(wrapper)
                 original = deepcopy(matrix.matrix)
-                min_coupling = CrisCOMVariableThresholdFilter.calculate_median(
-                    original)
+                min_coupling = -1
+                if len(original) > 0:
+                    min_coupling = CrisCOMVariableThresholdFilter.\
+                        calculate_median(original)
                 filtered_matrix = ccctf.filter_process(matrix)
                 assert filtered_matrix != None
                 assert not self.has_value_less_than(filtered_matrix.matrix,

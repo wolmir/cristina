@@ -149,10 +149,11 @@ class CrisCOMVariableThresholdFilter(pypeline.Filter):
         self.method_chain_filter = MethodChainFilter(0.0)
 
     def filter_process(self, data):
-        median = CrisCOMVariableThresholdFilter.calculate_median(
-            data.get_matrix())
-        self.method_chain_filter.set_min_coupling(median)
-        data.set_matrix(self.method_chain_filter.filter_matrix(data))
+        if len(data.get_matrix()) > 0:
+            median = CrisCOMVariableThresholdFilter.calculate_median(
+                data.get_matrix())
+            self.method_chain_filter.set_min_coupling(median)
+            data.set_matrix(self.method_chain_filter.filter_matrix(data))
         return data
 
     @staticmethod
