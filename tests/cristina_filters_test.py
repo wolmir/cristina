@@ -304,8 +304,8 @@ class TestCrisMethodChainAssembler:
             ccomct = CrisCOMConstantThresholdFilter(min_coupling)
             filtered_matrix = ccomct.filter_process(method_matrix)
             method_chains = cmca.filter_process(filtered_matrix)
-            method_names = [[node.name for node in mc.method_nodes]
+            method_names = [[node.name for node in mc.method_ast_nodes]
                 for mc in method_chains]
             custom_chains = chain_factory(class_name)
             assert len(method_names) == len(custom_chains)
-            assert len(set(method_names) - set(custom_chains)) == 0
+            assert method_names in custom_chains

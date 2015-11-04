@@ -1,3 +1,5 @@
+import pdb
+
 class MatrixToGraphAdapter(object):
     def __init__(self, method_matrix):
         self.method_matrix = method_matrix.get_matrix()
@@ -12,6 +14,7 @@ class MatrixToGraphAdapter(object):
 class MatrixSplitter:
     def __init__(self, method_matrix):
         self.matrix = method_matrix
+        pdb.set_trace()
 
     def split_matrix(self):
         return GraphSplitter.split_graph(
