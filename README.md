@@ -12,4 +12,5 @@ __init__ method as well.
 5. (fixed) AstClassWrapper is ignoring methods with the same name.
 6. (fixed) MethodMatrix has no set_metrics.
 7. (fixed) Pipeline.set_data_source() is raising IndexError.
-8. The temp files used for testing are not being deleted.
+8. (fixed) The temp files used for testing are not being deleted.
+9. CrisComVariableThresholdFilter is not ignoring empty matrices.

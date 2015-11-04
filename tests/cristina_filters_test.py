@@ -2,8 +2,10 @@ import pytest
 import os
 import ast
 import logging
+import astpp
 
 from conftest import *
+from copy import deepcopy
 from cristina_filters import *
 from AstClassWrapper import *
 from StructuralSimilarityBetweenMethods import *
@@ -207,13 +209,58 @@ class TestCrisMethodByMethodMatrix:
 
 
 class TestCrisCOMConstantThresholdFilter:
-    #@pytest.mark.skipif(MAX_NO_OF_FILES >= 50, reason='Takes too long.')
-    def test_for_crashes(self, list_of_ast_class_nodes):
+
+    def has_value_less_than(self, matrix, value):
+        for row in matrix:
+            if len(filter(lambda x: x <= value and x > 0, row)) > 0:
+                return True
+        return False
+
+    @pytest.mark.skipif(MAX_NO_OF_FILES >= 50, reason='Takes too long.')
+    def test_filter_process(self, list_of_ast_class_nodes):
+        weight_ssm = 0.7
+        weight_cdm = 0.3
+        metrics = [(StructuralSimilarityBetweenMethods(), weight_ssm),
+            (CallBasedDependenceBetweenMethods(), weight_cdm)]
+        cmmm = CrisMethodByMethodMatrix(metrics)
+        min_coupling = random.random()
+        ccctf = CrisCOMConstantThresholdFilter(min_coupling)
         for python_file, node, class_nodes in list_of_ast_class_nodes:
             for class_node in class_nodes:
-                ccctf = CrisCOMConstantThresholdFilter(class_node)
-                assert ccctf != None
+                wrapper = AstClassWrapper(class_node)
+                matrix = cmmm.build_method_matrix(wrapper)
+                original = deepcopy(matrix.matrix)
+                filtered_matrix = ccctf.filter_process(matrix)
+                assert filtered_matrix != None
+                assert not self.has_value_less_than(filtered_matrix.matrix,
+                    min_coupling)
 
-    @pytest.mark.skipif(True, reason="Not implemented yet.")
+
+class TestCrisCOMVariableThresholdFilter:
+
+    def has_value_less_than(self, matrix, value):
+        for row in matrix:
+            if len(filter(lambda x: x <= value and x > 0, row)) > 0:
+                return True
+        return False
+
+    #@pytest.mark.skipif(MAX_NO_OF_FILES >= 50, reason='Takes too long.')
     def test_filter_process(self, list_of_ast_class_nodes):
-        pass
+        weight_ssm = 0.7
+        weight_cdm = 0.3
+        metrics = [(StructuralSimilarityBetweenMethods(), weight_ssm),
+            (CallBasedDependenceBetweenMethods(), weight_cdm)]
+        cmmm = CrisMethodByMethodMatrix(metrics)
+        ccctf = CrisCOMVariableThresholdFilter()
+        for python_file, node, class_nodes in list_of_ast_class_nodes:
+            for class_node in class_nodes:
+                ast_dump = astpp.dump(class_node)
+                wrapper = AstClassWrapper(class_node)
+                matrix = cmmm.build_method_matrix(wrapper)
+                original = deepcopy(matrix.matrix)
+                min_coupling = CrisCOMVariableThresholdFilter.calculate_median(
+                    original)
+                filtered_matrix = ccctf.filter_process(matrix)
+                assert filtered_matrix != None
+                assert not self.has_value_less_than(filtered_matrix.matrix,
+                    min_coupling)
