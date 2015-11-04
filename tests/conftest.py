@@ -8,7 +8,7 @@ import os
 
 TEST_DATA_DIR = 'tests/test_data'
 TEST_TMP_DIR = ''
-MAX_NO_OF_FILES = 300
+MAX_NO_OF_FILES = 51
 
 class ClassFinder(ast.NodeVisitor):
     def __init__(self):

@@ -268,3 +268,44 @@ class TestCrisCOMVariableThresholdFilter:
                 assert filtered_matrix != None
                 assert not self.has_value_less_than(filtered_matrix.matrix,
                     min_coupling)
+
+
+class TestCrisMethodChainAssembler:
+    custom_code_fname = "chain_assembler_input.py"
+
+    def get_input_as_module(self):
+        import imp
+        custom_dir = os.path.join(TEST_DATA_DIR, 'custom_data')
+        fname = os.path.join(custom_dir, self.custom_code_fname)
+        mod = imp.load_source("chain_assembler_input", fname)
+        return mod
+
+    def test_filter_process(self, custom_python_code):
+        ast_node = ast.parse(custom_python_code)
+        class_finder = ClassFinder()
+        class_finder.visit(ast_node)
+        weight_ssm = 0.5
+        weight_cdm = 0.5
+        min_coupling = 0.4
+        metrics = [(StructuralSimilarityBetweenMethods(), weight_ssm),
+            (CallBasedDependenceBetweenMethods(), weight_cdm)]
+        cmmm = CrisMethodByMethodMatrix(metrics)
+        class_nodes = class_finder.class_nodes_dict
+        mod = self.get_input_as_module()
+        matrix_factory = mod.get_method_matrix
+        chain_factory = mod.get_method_chains
+        #method_matrices = self.get_method_matrices()
+        cmca = CrisMethodChainsAssembler()
+        for class_name in class_nodes.keys():
+            custom_matrix = matrix_factory(class_name, weight_ssm, weight_cdm)
+            class_node = class_nodes[class_name]
+            ast_wrapper = AstClassWrapper(class_node)
+            method_matrix = cmmm.build_method_matrix(ast_wrapper)
+            ccomct = CrisCOMConstantThresholdFilter(min_coupling)
+            filtered_matrix = ccomct.filter_process(method_matrix)
+            method_chains = cmca.filter_process(filtered_matrix)
+            method_names = [[node.name for node in mc.method_nodes]
+                for mc in method_chains]
+            custom_chains = chain_factory(class_name)
+            assert len(method_names) == len(custom_chains)
+            assert len(set(method_names) - set(custom_chains)) == 0
