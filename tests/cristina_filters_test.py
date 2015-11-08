@@ -3,6 +3,7 @@ import os
 import ast
 import logging
 import astpp
+import class_generator
 
 from conftest import *
 from copy import deepcopy
@@ -270,6 +271,11 @@ class TestCrisCOMVariableThresholdFilter:
                     min_coupling)
 
 
+@pytest.fixture
+def cls_gen():
+    return class_generator.SimpleClsGenerator()
+
+
 class TestCrisMethodChainAssembler:
     custom_code_fname = "chain_assembler_input.py"
 
@@ -280,6 +286,7 @@ class TestCrisMethodChainAssembler:
         mod = imp.load_source("chain_assembler_input", fname)
         return mod
 
+    @pytest.mark.skipif(True, reason="New test implementation available")
     def test_filter_process(self, custom_python_code):
         ast_node = ast.parse(custom_python_code)
         class_finder = ClassFinder()
@@ -309,3 +316,35 @@ class TestCrisMethodChainAssembler:
             custom_chains = chain_factory(class_name)
             assert len(method_names) == len(custom_chains)
             assert method_names in custom_chains
+
+    def compare_chains(self, chain1, chain2):
+        for chain in chain1:
+            if not chain in chain2:
+                return False
+        return True
+
+    def test_filter_process_with_cls_gen(self, cls_gen):
+        weight_ssm = 0.5
+        weight_cdm = 0.5
+        min_coupling = 0.4
+        metrics = [(StructuralSimilarityBetweenMethods(), weight_ssm),
+            (CallBasedDependenceBetweenMethods(), weight_cdm)]
+        cmmm = CrisMethodByMethodMatrix(metrics)
+        cmca = CrisMethodChainsAssembler()
+        ccomct = CrisCOMConstantThresholdFilter(min_coupling)
+        for simple_cls in cls_gen.generate(100, 10, 10):
+            class_node = simple_cls.get_ast_node()
+            class_wrapper = AstClassWrapper(class_node)
+            method_matrix = cmmm.build_method_matrix(class_wrapper)
+            filtered_matrix = ccomct.filter_process(method_matrix)
+            filtered_matrix_matrix = filtered_matrix.get_matrix()
+            method_chains = cmca.filter_process(filtered_matrix)
+            custom_filtered_matrix = simple_cls.filter_matrix(weight_ssm,
+                weight_cdm, min_coupling)
+            method_names = [[node.name for node in mc.method_ast_nodes]
+                for mc in method_chains]
+            custom_chains = simple_cls.get_method_chains(weight_ssm,
+                weight_cdm, min_coupling)
+            assert custom_filtered_matrix == filtered_matrix_matrix
+            assert len(method_names) == len(custom_chains)
+            assert self.compare_chains(method_names, custom_chains)
