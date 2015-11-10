@@ -34,9 +34,8 @@ class CallBasedDependenceBetweenMethods(Metric.Metric):
         calls_in = 0
         called_method_name = called_method_node.name
         for method_node in class_wrapper.get_method_nodes():
-            if method_node.name != called_method_name:
-                calls_in += \
-                    MethodCallsVisitor().count_calls_in_method_node_to_method_name(method_node, called_method_name)
+            calls_in += \
+                MethodCallsVisitor().count_calls_in_method_node_to_method_name(method_node, called_method_name)
         return calls_in
 
     def __calculate(self, method_node1, method_node2, class_wrapper):

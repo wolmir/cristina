@@ -1,5 +1,6 @@
 import pytest
 import tempfile
+import class_generator
 import string
 import random
 import shutil
@@ -91,4 +92,7 @@ def custom_python_code(request):
         custom_code = src.read()
     return custom_code
 
+@pytest.fixture
+def cls_gen():
+    return class_generator.SimpleClsGenerator()
 

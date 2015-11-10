@@ -3,15 +3,14 @@ import ast
 import pdb
 
 # from colorama import init
-# from blessings import Terminal
+from blessings import Terminal
 
 # init()
 
 
 def print_matrix(matrix):
     if len(matrix) == 0:
-        print '[]'
-        return
+        return '[]'
     fmatrix = [['%.2f' % col for col in row]
         for row in matrix]
     ret_s = '     '.join([' '] + [str(c) for c in range(len(fmatrix[0]))]) +\
@@ -21,18 +20,19 @@ def print_matrix(matrix):
     return ret_s + '\n'
 
 
-# def print_matrix_with_fabulousness(matrix):
-#     colors = [t.red, t.green, t.blue]
-#     if len(matrix) == 0:
-#         print t.yellow('[]')
-#         return
-#     fmatrix = [['%.2f' % col for col in row]
-#         for row in matrix]
-#     ret_s = t.bold('     '.join([' '] + [str(c)
-#         for c in range(len(fmatrix[0]))]) + "\n")
-#     for n, row in enumerate(fmatrix):
-#         ret_s += colors[n % 3]('  '.join([str(n)] + row) + "\n")
-#     return ret_s + '\n'
+def print_matrix_with_fabulousness(matrix):
+    t = Terminal()
+    colors = [t.red, t.green, t.blue]
+    if len(matrix) == 0:
+        #print t.yellow('[]')
+        return t.yellow('[')
+    fmatrix = [['%.2f' % col for col in row]
+        for row in matrix]
+    ret_s = t.bold('     '.join([' '] + [str(c)
+        for c in range(len(fmatrix[0]))]) + "\n")
+    for n, row in enumerate(fmatrix):
+        ret_s += colors[n % 3]('  '.join([str(n)] + row) + "\n")
+    return ret_s + '\n'
 
 
 def rint(n):
@@ -125,7 +125,7 @@ class SimpleMethod:
             code += ('\t' * (tab_level + 1)) + "pass\n\n"
             return code
         for field in self.vars:
-            code += ('\t' * (tab_level + 1)) + field + " = 0\n"
+            code += ('\t' * (tab_level + 1)) + "self." + field + " = 0\n"
         for call in self.m_calls:
             code += ('\t' * (tab_level + 1)) + "self.method" + \
                 str(call) + "()\n"
@@ -185,6 +185,37 @@ class SimpleCls(object):
                     matrix[row].append(matrix[col][row])
         return matrix
 
+    def get_ssm_matrix(self):
+        matrix = []
+        for row in range(len(self.methods)):
+            matrix.append([])
+            for col in range(len(self.methods)):
+                if row == col:
+                    matrix[row].append(1.0)
+                elif row < col:
+                    ssm = self.methods[row].ssm(self.methods[col])
+                    matrix[row].append(ssm)
+                else:
+                    matrix[row].append(matrix[col][row])
+        return matrix
+
+    def get_cdm_matrix(self):
+        matrix = []
+        for row in range(len(self.methods)):
+            matrix.append([])
+            for col in range(len(self.methods)):
+                if row == col:
+                    matrix[row].append(1.0)
+                elif row < col:
+                    cdm = self.methods[row].cdm(self.methods[col],
+                        self.methods)
+                    cdm2 = self.methods[col].cdm(self.methods[row],
+                        self.methods)
+                    matrix[row].append(max(cdm, cdm2))
+                else:
+                    matrix[row].append(matrix[col][row])
+        return matrix
+
     def filter_matrix(self, w_ssm, w_cdm, min_coupling=-1):
         matrix = self.get_matrix(w_ssm, w_cdm)
         cut_value = min_coupling
@@ -207,13 +238,14 @@ class SimpleCls(object):
             for col in range(row + 1, len(matrix[row])):
                 if matrix[row][col] > 0.0:
                     tmp_chain.add(col)
+            new_chain_list = []
             for chain in chains:
                 if chain & tmp_chain:
-                    chain |= tmp_chain
-                    tmp_chain = None
-                    break
-            if tmp_chain:
-                chains.append(tmp_chain)
+                    tmp_chain |= chain
+                else:
+                    new_chain_list.append(chain)
+            new_chain_list.append(tmp_chain)
+            chains = new_chain_list
         return [["method" + str(c) for c in chain] for chain in chains]
 
 

@@ -3,7 +3,7 @@ import os
 import ast
 import logging
 import astpp
-import class_generator
+from class_generator import print_matrix, print_matrix_with_fabulousness
 
 from conftest import *
 from copy import deepcopy
@@ -161,6 +161,71 @@ class TestAstClassWrapper:
             no_of_methods = mod.get_number_of_methods(class_name)
             assert len(ast_wrapper.get_method_nodes()) == no_of_methods
 
+class TestMetrics:
+    def build_test_matrix(self, metric, wrapper):
+        m_nodes = wrapper.get_method_nodes()
+        matrix = []
+        for row in range(len(m_nodes)):
+            matrix.append([])
+            for col in range(len(m_nodes)):
+                if row == col:
+                    matrix[row].append(1.0)
+                elif row < col:
+                    result = metric.calculate(m_nodes[row], m_nodes[col],
+                        wrapper)
+                    result2 = metric.calculate(m_nodes[col], m_nodes[row],
+                        wrapper)
+                    matrix[row].append(max(result, result2))
+                    # matrix[row].append(result)
+                else:
+                    matrix[row].append(matrix[col][row])
+        return matrix
+
+    @pytest.mark.skipif(True, reason='Too many logs')
+    def test_ssm_metric(self, cls_gen):
+        metric = StructuralSimilarityBetweenMethods()
+        for simple_cls in cls_gen.generate(100, 10, 10):
+            cls_source = simple_cls.get_source_code()
+            logging.info("TestMetrics::" + \
+                "test_ssm_metric:simple_cls.source_code:\n" + \
+                cls_source)
+            ast_wrapper = AstClassWrapper(simple_cls.get_ast_node())
+            custom_ssm = simple_cls.get_ssm_matrix()
+            matrix_to_test = self.build_test_matrix(metric, ast_wrapper)
+            logging.info("TestMetrics::" + \
+                "test_ssm_metric:custom_ssm:\n" + \
+                print_matrix_with_fabulousness(custom_ssm))
+            logging.info("TestMetrics::" + \
+                "test_ssm_metric:matrix_to_test:\n" + \
+                print_matrix_with_fabulousness(matrix_to_test))
+            for method_node in ast_wrapper.get_method_nodes():
+                logging.info(metric.find_instance_variables(method_node,
+                    ast_wrapper))
+            assert custom_ssm == matrix_to_test
+
+    @pytest.mark.skipif(True, reason='Too many logs.')
+    def test_cdm_metric(self, cls_gen):
+        metric = CallBasedDependenceBetweenMethods()
+        for simple_cls in cls_gen.generate(100, 10, 10):
+            cls_source = simple_cls.get_source_code()
+            logging.info("TestMetrics::" + \
+                "test_cdm_metric:simple_cls.source_code:\n" + \
+                cls_source)
+            ast_wrapper = AstClassWrapper(simple_cls.get_ast_node())
+            custom_cdm = simple_cls.get_cdm_matrix()
+            matrix_to_test = self.build_test_matrix(metric, ast_wrapper)
+            logging.info("TestMetrics::" + \
+                "test_cdm_metric:custom_cdm:\n" + \
+                print_matrix_with_fabulousness(custom_cdm))
+            logging.info("TestMetrics::" + \
+                "test_cdm_metric:matrix_to_test:\n" + \
+                print_matrix_with_fabulousness(matrix_to_test))
+            # for method_node in ast_wrapper.get_method_nodes():
+            #     logging.info(metric.find_instance_variables(method_node,
+            #         ast_wrapper))
+            assert custom_cdm == matrix_to_test
+
+
 
 class TestCrisMethodByMethodMatrix:
     custom_code_fname = "method_matrix_input.py"
@@ -206,6 +271,27 @@ class TestCrisMethodByMethodMatrix:
             matrix = method_matrix.matrix
             no_of_nodes = len(method_matrix.method_nodes)
             mm_weights = method_matrix.weights
+            assert matrix == custom_matrix
+
+    @pytest.mark.skipif(True, reason='Too many logs.')
+    def test_build_method_matrix_clsgen(self, cls_gen):
+        weight_ssm = 0.5
+        weight_cdm = 0.5
+        metrics = [(StructuralSimilarityBetweenMethods(), weight_ssm),
+            (CallBasedDependenceBetweenMethods(), weight_cdm)]
+        cmmm = CrisMethodByMethodMatrix(metrics)
+        for simple_cls in cls_gen.generate(100, 10, 10):
+            cls_source = simple_cls.get_source_code()
+            logging.info("TestCrisMethodByMethodMatrix::" + \
+                "test_build_method_matrix:simple_cls.source_code:\n" + \
+                cls_source)
+            custom_matrix = simple_cls.get_matrix(weight_ssm, weight_cdm)
+            ast_wrapper = AstClassWrapper(simple_cls.get_ast_node())
+            method_matrix = cmmm.build_method_matrix(ast_wrapper)
+            logging.info("\ncustom_matrix:\n" + str(
+                print_matrix(custom_matrix)))
+            matrix = method_matrix.get_matrix()
+            logging.info("\nmatrix_under_test:\n" + str(print_matrix(matrix)))
             assert matrix == custom_matrix
 
 
@@ -271,11 +357,6 @@ class TestCrisCOMVariableThresholdFilter:
                     min_coupling)
 
 
-@pytest.fixture
-def cls_gen():
-    return class_generator.SimpleClsGenerator()
-
-
 class TestCrisMethodChainAssembler:
     custom_code_fname = "chain_assembler_input.py"
 
@@ -319,7 +400,7 @@ class TestCrisMethodChainAssembler:
 
     def compare_chains(self, chain1, chain2):
         for chain in chain1:
-            if not chain in chain2:
+            if len([x for x in chain2 if set(chain) == set(x)]) == 0:
                 return False
         return True
 
@@ -333,9 +414,15 @@ class TestCrisMethodChainAssembler:
         cmca = CrisMethodChainsAssembler()
         ccomct = CrisCOMConstantThresholdFilter(min_coupling)
         for simple_cls in cls_gen.generate(100, 10, 10):
+            cls_source = simple_cls.get_source_code()
+            logging.info("TestCrisMethodChainAssembler::" + \
+                "test_filter_process_with_cls_gen:simple_cls.source_code:\n" + \
+                cls_source)
             class_node = simple_cls.get_ast_node()
             class_wrapper = AstClassWrapper(class_node)
             method_matrix = cmmm.build_method_matrix(class_wrapper)
+            method_matrix_matrix = method_matrix.get_matrix()
+            custom_matrix = simple_cls.get_matrix(weight_ssm, weight_cdm)
             filtered_matrix = ccomct.filter_process(method_matrix)
             filtered_matrix_matrix = filtered_matrix.get_matrix()
             method_chains = cmca.filter_process(filtered_matrix)
@@ -345,6 +432,12 @@ class TestCrisMethodChainAssembler:
                 for mc in method_chains]
             custom_chains = simple_cls.get_method_chains(weight_ssm,
                 weight_cdm, min_coupling)
+            assert method_matrix_matrix != None
+            assert method_matrix_matrix == custom_matrix
             assert custom_filtered_matrix == filtered_matrix_matrix
+            logging.info("filtered_matrix:\n" + print_matrix(
+                custom_filtered_matrix))
+            logging.info("custom_chains:\n" + str(custom_chains))
+            logging.info("method_names:\n" + str(method_names))
             assert len(method_names) == len(custom_chains)
             assert self.compare_chains(method_names, custom_chains)

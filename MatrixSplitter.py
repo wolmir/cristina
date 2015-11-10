@@ -14,7 +14,7 @@ class MatrixToGraphAdapter(object):
 class MatrixSplitter:
     def __init__(self, method_matrix):
         self.matrix = method_matrix
-        pdb.set_trace()
+        #pdb.set_trace()
 
     def split_matrix(self):
         return GraphSplitter.split_graph(
