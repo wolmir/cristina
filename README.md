@@ -14,4 +14,4 @@ __init__ method as well.
 7. (fixed) Pipeline.set_data_source() is raising IndexError.
 8. (fixed) The temp files used for testing are not being deleted.
 9. (fixed) CrisComVariableThresholdFilter is not ignoring empty matrices.
-10. CrisMethodChainAssembler is crashing.
+10. (fixed) CrisMethodChainAssembler is crashing.
