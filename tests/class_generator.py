@@ -4,6 +4,7 @@ import pdb
 
 # from colorama import init
 from blessings import Terminal
+from itertools import product
 
 # init()
 
@@ -96,6 +97,10 @@ def generate_class():
     return build_class(number_of_vars, number_of_methods)
 
 
+def split_chains(chain1, chain2):
+    return [x for x in chain1 if not x in chain2]
+
+
 class SimpleMethod:
     def __init__(self, n, vars, m_calls):
         self.n = n
@@ -144,6 +149,14 @@ def matrix_index_of(matrix, e):
         if e in row:
             return row
     return None
+
+def merge(chain1, chain2):
+    return list(set(chain1) | set(chain2))
+
+
+def s_to_l(s):
+    return [list(x) for x in s]
+
 
 class SimpleCls(object):
     def __init__(self, n, max_vars, max_mets):
@@ -248,10 +261,65 @@ class SimpleCls(object):
             chains = new_chain_list
         return [["method" + str(c) for c in chain] for chain in chains]
 
+    def get_method_by_name(self, name):
+        method = [x for x in self.methods if x.name == name]
+        if len(method) == 1:
+            return method[0]
+        return None
+
+    def get_coupling(self, chain1, chain2, w_ssm, w_cdm):
+        c1mets = [self.get_method_by_name(x) for x in chain1]
+        c2mets = [self.get_method_by_name(x) for x in chain2]
+        avg_coupling = 0.0
+        for x, y in product(c1mets, c2mets):
+            avg_coupling += x.ssm(y) * w_ssm
+            avg_coupling += max(x.cdm(y, self.methods),
+                y.cdm(x, self.methods)) * w_cdm
+        return avg_coupling / (len(c1mets) * len(c2mets))
+
+    def merge_trivial_chains(self, method_chains, min_length, w_ssm, w_cdm):
+        trivial_chains = [x for x in method_chains if len(x) < min_length]
+        if len(trivial_chains) == 0:
+            return s_to_l(method_chains)
+        non_trivial_chains = split_chains(method_chains, trivial_chains)
+        if len(non_trivial_chains) == 0:
+            return s_to_l(method_chains)
+        for tchain in trivial_chains:
+            max_coupling = 0
+            chain_to_merge = None
+            for ntchain in non_trivial_chains:
+                coupling = self.get_coupling(tchain, ntchain, w_ssm, w_cdm)
+                if coupling >= max_coupling:
+                    chain_to_merge = ntchain
+                    max_coupling = coupling
+            chain_to_merge.update(tchain)
+            #pdb.set_trace()
+        return s_to_l(non_trivial_chains)
+
 
 class SimpleClsGenerator:
     def generate(self, quantity, max_vars, max_mets):
         return [SimpleCls(i, max_vars, max_mets) for i in range(quantity)]
+
+def l_to_s(array):
+    return [set(x) for x in array]
+
+if __name__ == '__main__':
+    simple_cls = SimpleCls(0, 100, 100)
+    print simple_cls.get_source_code()
+    w_ssm = 0.5
+    w_cdm = 0.5
+    min_coupling = 0.4
+    method_chains = simple_cls.get_method_chains(w_ssm, w_cdm, min_coupling)
+    print method_chains
+    merged_chains = simple_cls.merge_trivial_chains(l_to_s(method_chains), 3,
+        w_ssm,
+        w_cdm)
+    print merged_chains
+    merged_chains = simple_cls.merge_trivial_chains(l_to_s(method_chains), 3,
+        w_ssm,
+        w_cdm)
+    print merged_chains
 
 #19031989
 # if __name__ == '__main__':

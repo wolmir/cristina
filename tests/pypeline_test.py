@@ -5,6 +5,7 @@ import pdb
 from Queue import Queue, Empty
 from cristina_filters import *
 from pypeline import *
+from conftest import *
 
 
 class AssertionsSink(DataSink):
@@ -25,6 +26,24 @@ class AssertionsSink(DataSink):
                 assert self.queue.get_nowait() != None
         except Empty:
             pass
+
+
+# class SimpleClsSource(DataSource):
+#     def __init__(self, simple_cls_vec):
+#         DataSource.__init__(self)
+#         self.cls_source = simple_cls_vec
+
+#     def has_next(self):
+#         return len(self.cls_source) > 0
+
+#     def next(self):
+#         return self.cls_source.pop()
+
+
+# class Test2AssertionSink(DataSink):
+#     def __init__(self):
+#         pass
+
 
 class TestPypeline1:
     def test_cris_source_and_ast_gen(self, list_of_python_files):
@@ -47,3 +66,8 @@ class TestPypeline1:
         assert assertion_sink.in_pipe.is_open()
         pipeline.run()
         assertion_sink.make_assertions()
+
+
+# class TestPypeline2:
+#     def test_until_chain_merging(self, cls_gen):
+#         pass

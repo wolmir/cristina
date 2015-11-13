@@ -3,7 +3,8 @@ import os
 import ast
 import logging
 import astpp
-from class_generator import print_matrix, print_matrix_with_fabulousness
+from class_generator import print_matrix, print_matrix_with_fabulousness, \
+    l_to_s
 
 from conftest import *
 from copy import deepcopy
@@ -441,3 +442,52 @@ class TestCrisMethodChainAssembler:
             logging.info("method_names:\n" + str(method_names))
             assert len(method_names) == len(custom_chains)
             assert self.compare_chains(method_names, custom_chains)
+
+
+class TestCrisTrivialChainMerger:
+    def compare_chains(self, chain1, chain2):
+        for chain in chain1:
+            if len([x for x in chain2 if set(chain) == set(x)]) == 0:
+                return False
+        return True
+
+    def test_filter_process(self, cls_gen):
+        w_ssm = 0.5
+        w_cdm = 0.5
+        min_coupling = 0.4
+        min_length = 2
+        metrics = [(StructuralSimilarityBetweenMethods(), w_ssm),
+            (CallBasedDependenceBetweenMethods(), w_cdm)]
+        cmmm = CrisMethodByMethodMatrix(metrics)
+        cmca = CrisMethodChainsAssembler()
+        ccomct = CrisCOMConstantThresholdFilter(min_coupling)
+        ctcm = CrisTrivialChainMerger(metrics, min_length)
+        for simple_cls in cls_gen.generate(100, 10, 10):
+            cls_source = simple_cls.get_source_code()
+            # logging.info("TestCrisMethodChainAssembler::" + \
+            #     "test_filter_process_with_cls_gen:simple_cls.source_code:\n" + \
+            #     cls_source)
+            class_node = simple_cls.get_ast_node()
+            class_wrapper = AstClassWrapper(class_node)
+            method_matrix = cmmm.build_method_matrix(class_wrapper)
+            method_matrix_matrix = method_matrix.get_matrix()
+            custom_matrix = simple_cls.get_matrix(w_ssm, w_cdm)
+            filtered_matrix = ccomct.filter_process(method_matrix)
+            filtered_matrix_matrix = filtered_matrix.get_matrix()
+            method_chains = cmca.filter_process(filtered_matrix)
+            custom_filtered_matrix = simple_cls.filter_matrix(w_ssm,
+                w_cdm, min_coupling)
+            # method_names = [[node.name for node in mc.method_ast_nodes]
+            #     for mc in method_chains]
+            custom_chains = simple_cls.get_method_chains(w_ssm,
+                w_cdm, min_coupling)
+            custom_merged_chains = simple_cls.merge_trivial_chains(
+                    l_to_s(custom_chains),
+                    min_length,
+                    w_ssm,
+                    w_cdm
+                )
+            merged_chains = ctcm.filter_process(method_chains)
+            method_names = [x.get_method_names() for x in merged_chains]
+            assert len(custom_merged_chains) == len(method_names)
+            assert self.compare_chains(custom_merged_chains, method_names)

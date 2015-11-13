@@ -172,12 +172,12 @@ class CrisMethodChainsAssembler(pypeline.Filter):
 
 
 class CrisTrivialChainMerger(pypeline.Filter):
-    def __init__(self, metrics, weight_ssm, weight_cdm, min_length):
+    def __init__(self, metrics, min_length):
         pypeline.Filter.__init__(self)
-        self.weights = []
-        self.weights.append(weight_cdm)
-        self.weights.append(weight_ssm)
-        self.trivial_chain_merger = TrivialChainMerger(min_length, metrics,
+        self.weights = [m[1] for m in metrics]
+        self.metrics = [m[0] for m in metrics]
+        self.trivial_chain_merger = TrivialChainMerger(min_length,
+            self.metrics,
             self.weights)
 
     def filter_process(self, data):
