@@ -26,8 +26,14 @@ class MethodChain(object):
     def get_method_names(self):
         return [node.name for node in self.method_ast_nodes]
 
+    def get_method_nodes(self):
+        return self.method_ast_nodes
+
     def get_length(self):
         return len(self.method_ast_nodes)
+
+    def get_class_wrapper(self):
+        return self.method_matrix.get_class_wrapper()
 
 
 class MethodChainsAssembler(object):

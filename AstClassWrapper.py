@@ -1,4 +1,5 @@
 import ast
+import pdb
 
 import AstMethodNodeMiner
 
@@ -32,7 +33,7 @@ class InstanceVariablesFinder(ast.NodeVisitor):
             self.visit(target)
 
     def visit_Name(self, node):
-        print node.id
+        #print node.id
         self.instance_variables.add(node.id)
 
     def visit_Tuple(self, node):
@@ -46,10 +47,12 @@ class InstanceVariablesFinder(ast.NodeVisitor):
 
 class AstClassWrapper:
     def __init__(self, class_node):
+        if isinstance(class_node, ast.Module):
+            pdb.set_trace()
         self.class_node = class_node
         self.method_nodes = AstMethodNodeMiner.AstMethodNodeMiner().find_nodes(
             class_node)
-        self.method_names = [method_node.name 
+        self.method_names = [method_node.name
             for method_node in self.method_nodes]
         self.instance_references = set([])
         for method_node in self.method_nodes:
@@ -74,22 +77,23 @@ class AstClassWrapper:
 
 
 class AstClassWrapperBuilder:
-    def __init__(self, name, method_nodes):
+    def __init__(self, name, method_nodes, original_wrapper):
         self.name = name
         self.method_nodes = method_nodes
         self.fields = set([])
         field_finder = InstanceReferencesFinder()
         for node in method_nodes:
             self.fields |= field_finder.find_references(node)
+        self.fields -= set(original_wrapper.get_method_names())
 
 
     def build_class(self):
         named_fields = [ast.Name(id=field, ctx=ast.Store())
             for field in self.fields]
-        field_assignments = [ast.Assign(targets=[named_field], 
+        field_assignments = [ast.Assign(targets=[named_field],
                 value=ast.Name(id='None', ctx=ast.Load()))
             for named_field in named_fields]
         class_node = ast.ClassDef(name=self.name,
-            bases=[], body=field_assignments + 
+            bases=[], body=field_assignments +
                 self.method_nodes, decorator_list=[])
         return AstClassWrapper(class_node)

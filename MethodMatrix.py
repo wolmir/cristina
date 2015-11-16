@@ -54,3 +54,6 @@ class MethodMatrix:
 
     def add_metric(self, metric):
         self.metrics.append(metric)
+
+    def get_class_wrapper(self):
+        return self.ast_class_wrapper

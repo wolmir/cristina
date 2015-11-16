@@ -1,10 +1,12 @@
 import random
 import ast
 import pdb
+import logging
 
 # from colorama import init
 from blessings import Terminal
 from itertools import product
+
 
 # init()
 
@@ -34,6 +36,13 @@ def print_matrix_with_fabulousness(matrix):
     for n, row in enumerate(fmatrix):
         ret_s += colors[n % 3]('  '.join([str(n)] + row) + "\n")
     return ret_s + '\n'
+
+def print_chains(method_chains):
+    txt = "=" * 30 + "\n"
+    for chain in method_chains:
+        txt += ''.join(['-' + met + '-' for met in chain]) + '\n'
+    txt += "=" * 30 + "\n"
+    return txt
 
 
 def rint(n):
@@ -137,6 +146,16 @@ class SimpleMethod:
         code += "\n"
         return code
 
+    def get_ast_node(self):
+        return ast.parse(self.get_source_code(1)[1:]).body[0]
+        # class GambiVisitor(ast.NodeVisitor):
+        #     def visit_FunctionDef(self, node):
+        #         return node
+
+        # code = "class Gambiarra:\n" + self.get_source_code(1)
+        # pdb.set_trace()
+        # return GambiVisitor().visit(ast.parse(code))
+
 
 
 def median(matrix):
@@ -177,7 +196,7 @@ class SimpleCls(object):
         return code
 
     def get_ast_node(self):
-        return ast.parse(self.get_source_code())
+        return ast.parse(self.get_source_code()).body[0]
 
     def get_matrix(self, w_ssm, w_cdm):
         matrix = []
@@ -287,14 +306,58 @@ class SimpleCls(object):
         for tchain in trivial_chains:
             max_coupling = 0
             chain_to_merge = None
+            min_length = float("inf")
             for ntchain in non_trivial_chains:
                 coupling = self.get_coupling(tchain, ntchain, w_ssm, w_cdm)
-                if coupling >= max_coupling:
+                logging.info("merge_trivial_chains: coupling " +
+                    str(tchain) + " " + str(ntchain) + ": " +
+                    str(coupling))
+                if coupling >= max_coupling and len(ntchain) < min_length:
                     chain_to_merge = ntchain
                     max_coupling = coupling
             chain_to_merge.update(tchain)
             #pdb.set_trace()
         return s_to_l(non_trivial_chains)
+
+    def build_classdef_node(self, n):
+        return ast.ClassDef(
+            name=self.name + str(n),
+            bases=[],
+            body=[],
+            decorator_list=[]
+        )
+
+    def get_vars_from_chain(self, method_chain):
+        methods = [self.get_method_by_name(name) for name in method_chain]
+        fields = set([])
+        for method in methods:
+            fields.update(method.vars)
+        return fields
+
+    def build_named_fields(self, method_chain):
+        fields = self.get_vars_from_chain(method_chain)
+        return [ast.Name(id=field, ctx=ast.Store())
+            for field in fields]
+
+    def build_field_assignments(self, named_fields):
+        return [ast.Assign(targets=[named_field],
+                value=ast.Name(id='None', ctx=ast.Load()))
+                for named_field in named_fields]
+
+    def build_class(self, method_chain, n):
+        class_def = self.build_classdef_node(n)
+        named_fields = self.build_named_fields(method_chain)
+        field_assignments = self.build_field_assignments(named_fields)
+        method_nodes = [self.get_method_by_name(name).get_ast_node()
+            for name in method_chain]
+        #pdb.set_trace()
+        class_def.body = field_assignments + method_nodes
+        return class_def
+
+    def assemble_classes(self, merged_chains):
+        ast_nodes = [self.build_class(chain, i)
+            for i, chain in enumerate(merged_chains)]
+        return ast_nodes
 
 
 class SimpleClsGenerator:
@@ -305,21 +368,27 @@ def l_to_s(array):
     return [set(x) for x in array]
 
 if __name__ == '__main__':
-    simple_cls = SimpleCls(0, 100, 100)
-    print simple_cls.get_source_code()
+    import astpp
+    simple_cls = SimpleCls(0, 10, 10)
     w_ssm = 0.5
     w_cdm = 0.5
-    min_coupling = 0.4
+    min_coupling = 0.1
     method_chains = simple_cls.get_method_chains(w_ssm, w_cdm, min_coupling)
-    print method_chains
+    print print_chains(method_chains)
+    # print method_chains
     merged_chains = simple_cls.merge_trivial_chains(l_to_s(method_chains), 3,
         w_ssm,
         w_cdm)
-    print merged_chains
-    merged_chains = simple_cls.merge_trivial_chains(l_to_s(method_chains), 3,
-        w_ssm,
-        w_cdm)
-    print merged_chains
+    print print_chains(merged_chains)
+    print print_matrix_with_fabulousness(simple_cls.filter_matrix(0.5, 0.5,
+        min_coupling=min_coupling))
+    # merged_chains = simple_cls.merge_trivial_chains(l_to_s(method_chains), 3,
+    #     w_ssm,
+    #     w_cdm)
+    # print print_chains(merged_chains)
+    # assmbld = simple_cls.assemble_classes(merged_chains)
+    # for acls in assmbld:
+    #     print astpp.dump(acls)
 
 #19031989
 # if __name__ == '__main__':
