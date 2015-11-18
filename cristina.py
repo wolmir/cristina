@@ -1,6 +1,7 @@
 """Define Cristina and execute it."""
 import argparse
 import pypeline
+import logging
 from StructuralSimilarityBetweenMethods import \
     StructuralSimilarityBetweenMethods
 from CallBasedDependenceBetweenMethods import \
@@ -76,7 +77,7 @@ class Cristina(object):
 
     def main(self):
         """Run the pipeline"""
-        self.pipeline = self.create_pipeline()
+        self.create_pipeline()
         self.pipeline.run()
 
 

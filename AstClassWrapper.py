@@ -1,5 +1,7 @@
 import ast
-import pdb
+# import pdb
+# import logging
+# import astpp
 
 import AstMethodNodeMiner
 
@@ -47,8 +49,8 @@ class InstanceVariablesFinder(ast.NodeVisitor):
 
 class AstClassWrapper:
     def __init__(self, class_node):
-        if isinstance(class_node, ast.Module):
-            pdb.set_trace()
+        # if isinstance(class_node, ast.Module):
+        #     pdb.set_trace()
         self.class_node = class_node
         self.method_nodes = AstMethodNodeMiner.AstMethodNodeMiner().find_nodes(
             class_node)

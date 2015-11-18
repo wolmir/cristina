@@ -392,7 +392,7 @@ class TestCrisMethodChainAssembler:
             ast_wrapper = AstClassWrapper(class_node)
             method_matrix = cmmm.build_method_matrix(ast_wrapper)
             ccomct = CrisCOMConstantThresholdFilter(min_coupling)
-            filtered_matrix = ccomct.filter_process(method_matrix)
+            filtered_matrix = ccomct.filter_process([method_matrix])
             method_chains = cmca.filter_process(filtered_matrix)
             method_names = [[node.name for node in mc.method_ast_nodes]
                 for mc in method_chains]
@@ -406,6 +406,7 @@ class TestCrisMethodChainAssembler:
                 return False
         return True
 
+    @pytest.mark.skipif(True, reason="New test implementation available")
     def test_filter_process_with_cls_gen(self, cls_gen):
         weight_ssm = 0.5
         weight_cdm = 0.5
@@ -425,7 +426,7 @@ class TestCrisMethodChainAssembler:
             method_matrix = cmmm.build_method_matrix(class_wrapper)
             method_matrix_matrix = method_matrix.get_matrix()
             custom_matrix = simple_cls.get_matrix(weight_ssm, weight_cdm)
-            filtered_matrix = ccomct.filter_process(method_matrix)
+            filtered_matrix = ccomct.filter_process([method_matrix])
             filtered_matrix_matrix = filtered_matrix.get_matrix()
             method_chains = cmca.filter_process(filtered_matrix)
             custom_filtered_matrix = simple_cls.filter_matrix(weight_ssm,
@@ -537,7 +538,7 @@ class TestCrisClassAssembler:
     def pipeline_assembled_classes(self, class_node):
         class_wrapper = AstClassWrapper(class_node)
         method_matrix = self.cmmm.build_method_matrix(class_wrapper)
-        filtered_matrix = self.ccomct.filter_process(method_matrix)
+        filtered_matrix = self.ccomct.filter_process([method_matrix])
         method_chains = self.cmca.filter_process(filtered_matrix)
         self.merged_chains = self.ctcm.filter_process(method_chains)
         return self.cca.filter_process(self.merged_chains)
@@ -572,6 +573,7 @@ class TestCrisAstToCodeTransformer:
     def setup_transformer(self):
         self.transformer = AstToCodeTransformer()
 
+    @pytest.mark.skipif(True, reason='Too many logs.')
     def test_filter_process(self, cls_gen):
         self.setup_transformer()
         for simple_cls in cls_gen.generate(1000, 10, 10):

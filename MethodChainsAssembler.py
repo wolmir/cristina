@@ -1,3 +1,5 @@
+import logging
+
 from MatrixSplitter import MatrixSplitter
 
 class MethodChain(object):
@@ -39,6 +41,8 @@ class MethodChain(object):
 class MethodChainsAssembler(object):
     @staticmethod
     def assemble(method_matrix):
+        # logging.warning("MethodChainsAssembler::assemble: " +
+        #     str(method_matrix.matrix))
         matrix_splitter = MatrixSplitter(method_matrix)
         subgraphs = matrix_splitter.split_matrix()
         method_chains = [MethodChain(method_matrix, method_nodes)

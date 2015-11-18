@@ -55,7 +55,9 @@ class CrisDataSourceDirectory(pypeline.DataSource):
         return len(self.file_paths) > 0
 
     def next(self):
-        with open(self.file_paths.pop(), 'r') as open_file:
+        next_path = self.file_paths.pop()
+        logging.warning("CrisDataSourceDirectory::next: " + next_path)
+        with open(next_path, 'r') as open_file:
             return open_file.read()
         return None
 
@@ -93,7 +95,7 @@ class CrisClassNodeFinder(pypeline.Filter):
     @staticmethod
     def find_class_nodes(ast_node):
         class_node_finder = AstClassNodeFinder()
-        return class_node_finder.find_classes(ast_node)
+        return list(class_node_finder.find_classes(ast_node))
 
     def filter_process(self, data):
         return CrisClassNodeFinder.find_class_nodes(data)
@@ -108,7 +110,8 @@ class CrisAstClassWrapper(pypeline.Filter):
         return AstClassWrapper(class_node)
 
     def filter_process(self, data):
-        return CrisAstClassWrapper.wrap_class_node(data)
+        return [CrisAstClassWrapper.wrap_class_node(item)
+            for item in data]
 
 
 class CrisMethodByMethodMatrix(pypeline.Filter):
@@ -122,7 +125,8 @@ class CrisMethodByMethodMatrix(pypeline.Filter):
         return self.method_matrix_builder.build_matrix(class_wrapper)
 
     def filter_process(self, data):
-        return self.build_method_matrix(data)
+        return [self.build_method_matrix(item)
+            for item in data]
 
 
 class CrisChainsOfMethodsFilterFactory(object):
@@ -139,7 +143,8 @@ class CrisCOMConstantThresholdFilter(pypeline.Filter):
         self.method_chain_filter = MethodChainFilter(min_coupling)
 
     def filter_process(self, data):
-        data.set_matrix(self.method_chain_filter.filter_matrix(data))
+        for item in data:
+            item.set_matrix(self.method_chain_filter.filter_matrix(item))
         return data
 
 
@@ -148,13 +153,16 @@ class CrisCOMVariableThresholdFilter(pypeline.Filter):
         pypeline.Filter.__init__(self)
         self.method_chain_filter = MethodChainFilter(0.0)
 
-    def filter_process(self, data):
-        if len(data.get_matrix()) > 0:
+    def filter_matrix(self, matrix):
+        if len(matrix.get_matrix()) > 0:
             median = CrisCOMVariableThresholdFilter.calculate_median(
-                data.get_matrix())
+                matrix.get_matrix())
             self.method_chain_filter.set_min_coupling(median)
-            data.set_matrix(self.method_chain_filter.filter_matrix(data))
-        return data
+            matrix.set_matrix(self.method_chain_filter.filter_matrix(matrix))
+        return matrix
+
+    def filter_process(self, data):
+        return [self.filter_matrix(matrix) for matrix in data]
 
     @staticmethod
     def calculate_median(matrix):
@@ -168,7 +176,7 @@ class CrisMethodChainsAssembler(pypeline.Filter):
         pypeline.Filter.__init__(self)
 
     def filter_process(self, data):
-        return MethodChainsAssembler.assemble(data)
+        return [MethodChainsAssembler.assemble(item) for item in data]
 
 
 class CrisTrivialChainMerger(pypeline.Filter):
@@ -181,7 +189,8 @@ class CrisTrivialChainMerger(pypeline.Filter):
             self.weights)
 
     def filter_process(self, data):
-        return self.trivial_chain_merger.merge_chains(data)
+        return [self.trivial_chain_merger.merge_chains(item)
+            for item in data]
 
 
 class CrisClassAssembler(pypeline.Filter):
@@ -189,15 +198,16 @@ class CrisClassAssembler(pypeline.Filter):
         pypeline.Filter.__init__(self)
 
     def filter_process(self, data):
-        return ClassAssembler().assemble_classes(data)
+        return [ClassAssembler().assemble_classes(item)
+            for item in data]
 
 class CrisAstToCodeTransformer(pypeline.Filter):
     def __init__(self):
         pypeline.Filter.__init__(self)
 
     def filter_process(self, data):
-        return [AstToCodeTransformer.transform(class_wrapper.get_class_node())
-            for class_wrapper in data]
+        return [[AstToCodeTransformer.transform(class_wrapper.get_class_node())
+            for class_wrapper in item] for item in data]
 
 
 class CrisDataSink(pypeline.DataSink):
@@ -206,8 +216,9 @@ class CrisDataSink(pypeline.DataSink):
         self.output_file = open(output_path, 'w')
 
     def handle_output(self, data):
-        for class_code in data:
-            self.output_file.write(class_code)
+        for item in data:
+            for class_code in item:
+                self.output_file.write(class_code)
 
     def close_sink(self):
         self.output_file.close()

@@ -53,15 +53,22 @@ class Filter(threading.Thread):
             items in the pipe.
             Close the pipe when done.
         """
-        while self.in_pipe.is_open() or self.in_pipe.has_flow():
-            try:
-                input_data_packet = self.in_pipe.pull()
-                if input_data_packet != None:
-                    output_data_packet = self.filter_process(input_data_packet)
-                    self.out_pipe.push(output_data_packet)
-            except Empty:
-                pass
-        self.out_pipe.close_register()
+        try:
+            while ((self.in_pipe.is_open() or self.in_pipe.has_flow())
+                    and self.out_pipe.is_open()):
+                try:
+                    input_data_packet = self.in_pipe.pull()
+                    if input_data_packet != None:
+                        output_data_packet = self.filter_process(
+                            input_data_packet)
+                        self.out_pipe.push(output_data_packet)
+                except Empty:
+                    pass
+        except:
+            raise
+        finally:
+            self.out_pipe.close_register()
+            self.in_pipe.close_register()
 
     def set_input_pipe(self, input_pipe):
         """Set the input pipe. The data supplier."""
