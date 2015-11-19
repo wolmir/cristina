@@ -3,6 +3,7 @@ import threading
 import pdb
 from Queue import Queue, Empty
 
+
 class Pipe(object):
     """Define a thread-safe pipe object to transfer data between filters."""
     def __init__(self):

@@ -1,3 +1,5 @@
+import copy
+
 class MethodMatrix:
     def __init__(self, metrics, weights):
         self.matrix = []
@@ -27,7 +29,7 @@ class MethodMatrix:
                             self.method_nodes[i], self.method_nodes[j],
                             self.ast_class_wrapper)
                         self.matrix[i][j] += self.weights[w] * measure
-        return self
+        return copy.copy(self)
 
     def clear_matrix(self):
         self.matrix = []

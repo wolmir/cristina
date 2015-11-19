@@ -77,6 +77,7 @@ class Cristina(object):
 
     def main(self):
         """Run the pipeline"""
+        logging.disable(logging.WARNING)
         self.create_pipeline()
         self.pipeline.run()
 

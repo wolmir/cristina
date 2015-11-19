@@ -3,6 +3,7 @@ import os
 import ast
 import pypeline
 import logging
+import pdb
 from AstClassNodeFinder import AstClassNodeFinder
 from AstClassWrapper import AstClassWrapper
 from MethodMatrix import MethodMatrix
@@ -11,6 +12,18 @@ from MethodChainsAssembler import MethodChainsAssembler
 from TrivialChainMerger import TrivialChainMerger
 from ClassAssembler import ClassAssembler
 from AstToCodeTransformer import AstToCodeTransformer
+
+
+def print_matrix(matrix):
+    if len(matrix) == 0:
+        return '[]'
+    fmatrix = [['%.2f' % col for col in row]
+        for row in matrix]
+    ret_s = '     '.join([' '] + [str(c) for c in range(len(fmatrix[0]))]) +\
+     "\n"
+    for n, row in enumerate(fmatrix):
+        ret_s += '  '.join([str(n)] + row) + "\n"
+    return ret_s + '\n'
 
 
 class CrisDataSourceSingleFile(pypeline.DataSource):
@@ -56,7 +69,7 @@ class CrisDataSourceDirectory(pypeline.DataSource):
 
     def next(self):
         next_path = self.file_paths.pop()
-        logging.warning("CrisDataSourceDirectory::next: " + next_path)
+        # logging.warning("CrisDataSourceDirectory::next: " + next_path)
         with open(next_path, 'r') as open_file:
             return open_file.read()
         return None
@@ -98,7 +111,10 @@ class CrisClassNodeFinder(pypeline.Filter):
         return list(class_node_finder.find_classes(ast_node))
 
     def filter_process(self, data):
-        return CrisClassNodeFinder.find_class_nodes(data)
+        output = CrisClassNodeFinder.find_class_nodes(data)
+        if len(output) == 0:
+            return None
+        return output
 
 
 class CrisAstClassWrapper(pypeline.Filter):
@@ -122,11 +138,18 @@ class CrisMethodByMethodMatrix(pypeline.Filter):
         self.method_matrix_builder = MethodMatrix(self.metrics, self.weights)
 
     def build_method_matrix(self, class_wrapper):
-        return self.method_matrix_builder.build_matrix(class_wrapper)
+        matrix = self.method_matrix_builder.build_matrix(class_wrapper)
+        logging.warning("CrisMethodByMethodMatrix::" +
+            "build_method_matrix:\n" + print_matrix(matrix.matrix))
+        return matrix
 
     def filter_process(self, data):
-        return [self.build_method_matrix(item)
+        matrices = [self.build_method_matrix(item)
             for item in data]
+        for mat in matrices:
+            logging.warning("CrisMethodByMethodMatrix::" +
+                "matrix:\n" + print_matrix(mat.matrix))
+        return matrices
 
 
 class CrisChainsOfMethodsFilterFactory(object):
@@ -144,6 +167,8 @@ class CrisCOMConstantThresholdFilter(pypeline.Filter):
 
     def filter_process(self, data):
         for item in data:
+            logging.warning("CrisCOMConstantThresholdFilter::matrix:\n"
+                + print_matrix(item.matrix))
             item.set_matrix(self.method_chain_filter.filter_matrix(item))
         return data
 
@@ -176,7 +201,11 @@ class CrisMethodChainsAssembler(pypeline.Filter):
         pypeline.Filter.__init__(self)
 
     def filter_process(self, data):
-        return [MethodChainsAssembler.assemble(item) for item in data]
+        chains = [MethodChainsAssembler.assemble(item) for item in data]
+        if len(chains) > 0:
+            logging.warning("CrisMethodChainsAssembler: chains: " +
+                str(len(chains[0])))
+        return chains
 
 
 class CrisTrivialChainMerger(pypeline.Filter):
@@ -189,8 +218,11 @@ class CrisTrivialChainMerger(pypeline.Filter):
             self.weights)
 
     def filter_process(self, data):
-        return [self.trivial_chain_merger.merge_chains(item)
+        merged_chains = [self.trivial_chain_merger.merge_chains(item)
             for item in data]
+        logging.warning("CrisTrivialChainMerger::merged_chains: " +
+            str(merged_chains))
+        return merged_chains
 
 
 class CrisClassAssembler(pypeline.Filter):
@@ -198,8 +230,12 @@ class CrisClassAssembler(pypeline.Filter):
         pypeline.Filter.__init__(self)
 
     def filter_process(self, data):
-        return [ClassAssembler().assemble_classes(item)
+        assembled_classes = [ClassAssembler().assemble_classes(item)
             for item in data]
+        #pdb.set_trace()
+        logging.warning("CrisClassAssembler::assembled_classes: " +
+            str(assembled_classes))
+        return assembled_classes
 
 class CrisAstToCodeTransformer(pypeline.Filter):
     def __init__(self):
@@ -218,7 +254,7 @@ class CrisDataSink(pypeline.DataSink):
     def handle_output(self, data):
         for item in data:
             for class_code in item:
-                self.output_file.write(class_code)
+                self.output_file.write(class_code + '\n\n')
 
     def close_sink(self):
         self.output_file.close()

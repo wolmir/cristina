@@ -2,6 +2,17 @@ import logging
 
 from MatrixSplitter import MatrixSplitter
 
+def print_matrix(matrix):
+    if len(matrix) == 0:
+        return '[]'
+    fmatrix = [['%.2f' % col for col in row]
+        for row in matrix]
+    ret_s = '     '.join([' '] + [str(c) for c in range(len(fmatrix[0]))]) +\
+     "\n"
+    for n, row in enumerate(fmatrix):
+        ret_s += '  '.join([str(n)] + row) + "\n"
+    return ret_s + '\n'
+
 class MethodChain(object):
     def __init__(self, method_matrix, method_nodes):
         self.method_matrix = method_matrix
@@ -41,10 +52,14 @@ class MethodChain(object):
 class MethodChainsAssembler(object):
     @staticmethod
     def assemble(method_matrix):
-        # logging.warning("MethodChainsAssembler::assemble: " +
-        #     str(method_matrix.matrix))
+        logging.warning("MethodChainsAssembler::assemble: \n" +
+            print_matrix(method_matrix.matrix))
         matrix_splitter = MatrixSplitter(method_matrix)
         subgraphs = matrix_splitter.split_matrix()
+        logging.warning("MethodChainsAssembler::assemble:subgraphs \n" +
+            str(subgraphs))
         method_chains = [MethodChain(method_matrix, method_nodes)
             for method_nodes in subgraphs]
+        logging.warning("MethodChainsAssembler::assemble:" +
+            "method_chains: \n" + str(method_chains))
         return method_chains

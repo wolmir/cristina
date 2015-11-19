@@ -47,6 +47,13 @@ class InstanceVariablesFinder(ast.NodeVisitor):
         return
 
 
+class ResetLinesVisitor(ast.NodeVisitor):
+    def visit(self, node):
+        if hasattr(node, 'lineno'):
+            node.lineno = 0
+        self.generic_visit(node)
+
+
 class AstClassWrapper:
     def __init__(self, class_node):
         # if isinstance(class_node, ast.Module):
@@ -61,6 +68,7 @@ class AstClassWrapper:
             self.instance_references |= InstanceReferencesFinder().find_references(method_node)
         self.instance_variables = self.instance_references - set(self.method_names)
         self.instance_variables |= InstanceVariablesFinder().find_variables(class_node)
+        ResetLinesVisitor().visit(self.class_node)
 
     def get_method_names(self):
         return self.method_names
