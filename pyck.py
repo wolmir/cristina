@@ -91,7 +91,7 @@ class MethodSymbolsExtractor(ast.NodeVisitor):
             else:
                 self.foreign_references[value_name] = {node.attr}
             #print node.attr
-            return value_name + "." + node.attr
+            return str(value_name) + "." + node.attr
         try:
             variable_name = node.value.id
         except AttributeError:
@@ -102,8 +102,9 @@ class MethodSymbolsExtractor(ast.NodeVisitor):
         try:
             variable_symbol = self.symbol_table.lookup(variable_name)
         except KeyError:
-            print ast.dump(node)
-            raise
+            return variable_name + "." + node.attr
+            # print ast.dump(node)
+            # raise
         attribute_name = node.attr
         if variable_name != 'self':
             if variable_symbol.is_local() or variable_symbol.is_parameter():
@@ -236,6 +237,9 @@ class InstanceSymbolsExtractor(ast.NodeVisitor):
             print self.symbol_table.lookup(node.name).get_namespaces()[0].get_identifiers()
             print self.symbol_table.lookup(node.name).get_namespaces()[1].get_identifiers()
             raise
+        except KeyError:
+            #Let it go, let it gooo!
+            pass
 
     def extract(self):
         try:
@@ -387,7 +391,7 @@ class CKModule(CKClass):
             class_descriptor = self.descriptor[class_name]
             if isinstance(class_descriptor, pyclbr.Class):
                 if class_descriptor.module == self.name:
-                    class_table = self.symbol_table.lookup(class_name).get_namespace()
+                    class_table = self.symbol_table.lookup(class_name).get_namespaces()[0]
                     class_node = class_node_finder.find(class_name)
                     ck_class = CKClass(class_name, class_descriptor, class_table, class_node)
                     ck_class.extract_references()
@@ -413,18 +417,24 @@ class CKProject(CKClass):
     def get_modules(arg, dirname, names):
         for name in names:
             if name.endswith(".py"):
-                #print dirname + " " + name
-                module_name = name
-                file_name = os.path.join(dirname, name)
-                if dirname != arg.project_path:
-                    module_name = file_name
-                    module_name = module_name.split(arg.project_path)[1]
-                    module_name = module_name[len(os.sep):]
-                    module_name = module_name.replace(os.sep, '.')
-                module_code = open(file_name).read()
-                ck_module = CKModule(module_name[:-3], arg.path, file_name, module_code)
-                arg.modules.append(ck_module)
-                arg.classes.update(ck_module.classes)
+                try:
+                    #print dirname + " " + name
+                    module_name = name
+                    file_name = os.path.join(dirname, name)
+                    if dirname != arg.project_path:
+                        module_name = name
+                        # module_name = module_name.split(arg.project_path)[1]
+                        # module_name = module_name[len(os.sep):]
+                        # module_name = module_name.replace(os.sep, '.')
+                    module_code = open(file_name).read()
+                    ck_module = CKModule(module_name[:-3], arg.path, file_name, module_code)
+                    arg.modules.append(ck_module)
+                    arg.classes.update(ck_module.classes)
+                except SyntaxError:
+                    continue
+                except:
+                    print name
+                    raise
 
     def __init__(self, name="", project_path=None, path=None):
         CKClass.__init__(self, name, None, None, None)
@@ -482,8 +492,10 @@ def __tests():
     #     print "\tDIT: " + str(ck_class.depth_of_inheritance_tree)
     # print ""
     this = os.path.dirname(__file__)
-    sys.path.insert(0, os.path.join(this, "tests", "Mutagenesis", "Code"))
-    ck_project = CKProject("Mutagenesis", os.path.join(this, "tests", "Mutagenesis", "Code"), None)
+    sys.path.insert(0, os.path.join(this, "tests", "test_data"))
+    sys.path.insert(0, os.path.join(this, "tests", "test_data", "custom_data"))
+    ck_project = CKProject("Codebase",
+        os.path.join(this, "tests", "test_data"), None)
     ck_project.measure_depth_of_inheritance_tree()
     ck_project.measure_number_of_children()
     ck_project.measure_coupling_between_objects(None)

@@ -1,3 +1,6 @@
+import ast
+import logging
+
 from astmonkey import visitors
 
 #Don't know if they fixed this yet.
@@ -12,6 +15,14 @@ class SourceGeneratorNodeVisitorFix(visitors.SourceGeneratorNodeVisitor):
             self.newline()
             self.write('else:')
             self.body(node.orelse)
+
+    def visit_Assert(self, node):
+        self.newline(node)
+        self.write('assert ')
+        self.visit(node.test)
+        if node.msg != None:
+            self.write(', ')
+            self.visit(node.msg)
 
 def to_source(node, indent_with=' ' * 4):
     """This function can convert a node tree back into python sourcecode.
@@ -36,4 +47,12 @@ def to_source(node, indent_with=' ' * 4):
 class AstToCodeTransformer:
     @staticmethod
     def transform(ast_node):
-        return to_source(ast_node)
+        source_code = to_source(ast_node)
+        try:
+            ast.parse(source_code)
+        except SyntaxError:
+            logging.warning("AstToCodeTransformer::transform: Syntax Error" +
+                " while trying to transform the ast node into source code. " +
+                "Ignoring it.")
+            return ''
+        return source_code

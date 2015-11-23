@@ -6,6 +6,7 @@ from StructuralSimilarityBetweenMethods import \
     StructuralSimilarityBetweenMethods
 from CallBasedDependenceBetweenMethods import \
     CallBasedDependenceBetweenMethods
+from RandomSimilarityBetweenMethods import RandomSimilarityBetweenMethods
 from cristina_filters import *
 
 
@@ -36,16 +37,22 @@ class Cristina(object):
             "file or directory where the refactored classes will be stored.")
         parser.add_argument("-rF", "--report-file", help="File where the " + \
             "report will be stored.")
+        parser.add_argument("-rdm", "--random", help="Use a random coupling" +
+            " metric.", action="store_true")
         self.args = parser.parse_args()
         self.pipeline = None
 
 
     def create_pipeline(self):
         """Create the pipeline."""
-        weight_cdm = self.args.weight_call_based_dependence_between_methods
-        weight_ssm = self.args.weight_structural_similarity_between_methods
-        metrics = [(CallBasedDependenceBetweenMethods(), weight_cdm),
-            (StructuralSimilarityBetweenMethods(), weight_ssm)]
+        metrics = []
+        if self.args.random:
+            metrics = [(RandomSimilarityBetweenMethods(), 1.0)]
+        else:
+            weight_cdm = self.args.weight_call_based_dependence_between_methods
+            weight_ssm = self.args.weight_structural_similarity_between_methods
+            metrics = [(CallBasedDependenceBetweenMethods(), weight_cdm),
+                (StructuralSimilarityBetweenMethods(), weight_ssm)]
         pipeline = pypeline.Pipeline()
         python_code_data_source = CrisDataSourceFactory.create(self.args.path,
             self.args.recursive)

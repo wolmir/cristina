@@ -89,21 +89,34 @@ class AstClassWrapper:
 class AstClassWrapperBuilder:
     def __init__(self, name, method_nodes, original_wrapper):
         self.name = name
+        self.o_name = original_wrapper.get_class_name()
         self.method_nodes = method_nodes
         self.fields = set([])
         field_finder = InstanceReferencesFinder()
         for node in method_nodes:
             self.fields |= field_finder.find_references(node)
         self.fields -= set(original_wrapper.get_method_names())
+        self.bases = original_wrapper.class_node.bases
 
 
-    def build_class(self):
+    def build_class(self, chain_number):
         named_fields = [ast.Name(id=field, ctx=ast.Store())
             for field in self.fields]
         field_assignments = [ast.Assign(targets=[named_field],
                 value=ast.Name(id='None', ctx=ast.Load()))
             for named_field in named_fields]
         class_node = ast.ClassDef(name=self.name,
-            bases=[], body=field_assignments +
-                self.method_nodes, decorator_list=[])
+            bases=self.bases,
+            body=field_assignments +
+                self.method_nodes +
+                [ast.Expr(value=ast.Str(s=' --> EXTRACTED <-- '))],
+            decorator_list=[])
+        if chain_number > 0:
+            class_node = ast.ClassDef(name=self.name,
+                bases=[ast.Name(id=self.o_name +
+                    str(chain_number - 1), ctx=ast.Load())],
+                body=field_assignments +
+                    self.method_nodes +
+                    [ast.Expr(value=ast.Str(s=' --> EXTRACTED <-- '))],
+                decorator_list=[])
         return AstClassWrapper(class_node)
